@@ -4,7 +4,7 @@ import tensorflow as tf
 from tools import csv_splitter
 import math
 import os
-
+import time
 from mpi4py import MPI 
 
 
@@ -66,7 +66,10 @@ print(f"Label: {label_name}")
 class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
 # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
-batch_size = 32
+batch_size = 10
+
+if rank == 0: 
+    print(f"Batch size is: {batch_size}")
 train_dataset = tf.data.experimental.make_csv_dataset(
   train_subset_fp,
   batch_size,
@@ -86,11 +89,28 @@ def pack_features_vector(features, labels):
 train_dataset = train_dataset.map(pack_features_vector)
 
 # DECLARE THE MODEL
-model = tf.keras.Sequential([
-    tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),  # input shape required
-    tf.keras.layers.Dense(10, activation=tf.nn.relu),
-    tf.keras.layers.Dense(3)
-])
+# if rank == 0: 
+model = tf.keras.Sequential()
+
+layer1 = tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,))
+layer2 = tf.keras.layers.Dense(10, activation=tf.nn.relu)
+layer3 = tf.keras.layers.Dense(3)
+
+layers = [layer1, layer2, layer3]
+
+if rank == 0:
+    payload = []
+    for l in layers: 
+        payload.append(l.get_weights())
+else: 
+    payload = None
+
+layer_weights = comm.bcast(payload, root = 0)
+
+for i, l in enumerate(layers): 
+    l.set_weights(layer_weights[i])
+    model.add(l)
+
 
 # DECALARE A LOSS FUNCTION
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
@@ -121,10 +141,10 @@ train_loss_results = []
 train_accuracy_results = []
 
 num_epochs = 201
-print("Loss test: {}".format(l))
-print("max_n_batches {}".format(max_n_batches) )
+print("Process {} Loss test: {}".format(rank,l))
 
 
+start = time.perf_counter()
 # EPOCH LOOP
 for epoch in range(num_epochs):
   
@@ -153,18 +173,20 @@ for epoch in range(num_epochs):
         # Gather a list of all gradients or "EOS" messages
         #print(f"Sending {type(payload)} from rank {rank} i : {i}")
         payload_gather = comm.gather(payload, root = 0) 
+        
         if rank == 0 : 
             filtered = filter(lambda n: n != "EOS", payload_gather)
 
-            sumed = None 
             reduced = []
+
             for grad_tuple in zip(*filtered): 
-                reduced.append(tf.math.add_n (list(grad_tuple))) 
+                reduced.append(tf.math.add_n (list(grad_tuple)) / size) 
+            #https://tech.preferred.jp/en/blog/technologies-behind-distributed-deep-learning-allreduce/
         else: 
             reduced = 0
 
         recieved_gradients = comm.bcast(reduced, root = 0)
-        #print(f"recieved g: {g}" )
+        
         optimizer.apply_gradients(zip(recieved_gradients, model.trainable_variables))
 
         # Track progress
@@ -176,6 +198,71 @@ for epoch in range(num_epochs):
     train_loss_results.append(epoch_loss_avg.result())
     train_accuracy_results.append(epoch_accuracy.result())
 
+    statistics = {"rank": rank,"loss": train_loss_results,"accuracy":train_accuracy_results}
+
+    statistics_gather = comm.gather(statistics, root = 0)
+
     if epoch % 50 == 0:
         print("Process: {:01d}  Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+
+finish = time.perf_counter() 
+
+print(f"Process {rank} finished in {round(finish-start,2)} second(s).")
+
+if rank == 0:
+    
+# VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
+    fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+    fig.suptitle('Training Metrics')
+    axes[0].set_ylabel("Loss", fontsize=14)
+    axes[1].set_ylabel("Acurracy", fontsize=14)
+    axes[1].set_xlabel("Epoch", fontsize=14)
+
+    for index, statistics in enumerate(statistics_gather):
+        axes[0].plot(statistics["loss"])
+        axes[1].plot(statistics["accuracy"])
+
+    plt.show()
+# GET THE TEST SET
+test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
+
+test_fp = tf.keras.utils.get_file(fname=os.path.basename(test_url),
+                                  origin=test_url)
+
+# SETUP A DATASET  
+test_dataset = tf.data.experimental.make_csv_dataset(
+    test_fp,
+    batch_size,
+    column_names=column_names,
+    label_name='species',
+    num_epochs=1,
+    shuffle=False)
+
+test_dataset = test_dataset.map(pack_features_vector)
+
+# EVALUATE THE MODEL ON THE TEST DATASET
+test_accuracy = tf.keras.metrics.Accuracy()
+
+for (x, y) in test_dataset:
+    logits = model(x)
+    prediction = tf.argmax(logits, axis=1, output_type=tf.int32)
+    test_accuracy(prediction, y)
+
+print("Test {:01d} set accuracy: {:.3%}".format(rank,test_accuracy.result()))
+
+# # USE THE MODEL TO MAKE PREDICTIONS 
+
+# predict_dataset = tf.convert_to_tensor([
+#     [5.1, 3.3, 1.7, 0.5,],
+#     [5.9, 3.0, 4.2, 1.5,],
+#     [6.9, 3.1, 5.4, 2.1]
+# ])
+
+# predictions = model(predict_dataset)
+
+# for i, logits in enumerate(predictions):
+#     class_idx = tf.argmax(logits).numpy()
+#     p = tf.nn.softmax(logits)[class_idx]
+#     name = class_names[class_idx]
+#     print("Example {} prediction: {} ({:4.1f}%)".format(i, name, 100*p))
 
