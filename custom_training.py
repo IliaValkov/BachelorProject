@@ -94,10 +94,10 @@ for epoch in range(num_epochs):
   # TRAINING LOOP - using batches of 32
   for x, y in train_dataset:
     # Optimize the model
-
+   
     # Compute loss value and gradients
     loss_value, grads = grad(model, x, y)
-   
+    
     # apply gradients to model
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
@@ -112,3 +112,61 @@ for epoch in range(num_epochs):
 
   if epoch % 50 == 0:
     print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+
+# VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
+fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+fig.suptitle('Training Metrics')
+
+axes[0].set_ylabel("Loss", fontsize=14)
+axes[0].plot(train_loss_results)
+
+axes[1].set_ylabel("Accuracy", fontsize=14)
+axes[1].set_xlabel("Epoch", fontsize=14)
+axes[1].plot(train_accuracy_results)
+plt.show()
+
+# GET THE TEST SET
+test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
+
+test_fp = tf.keras.utils.get_file(fname=os.path.basename(test_url),
+                                  origin=test_url)
+
+# SETUP A DATASET  
+test_dataset = tf.data.experimental.make_csv_dataset(
+    test_fp,
+    batch_size,
+    column_names=column_names,
+    label_name='species',
+    num_epochs=1,
+    shuffle=False)
+
+test_dataset = test_dataset.map(pack_features_vector)
+
+# EVALUATE THE MODEL ON THE TEST DATASET
+test_accuracy = tf.keras.metrics.Accuracy()
+
+for (x, y) in test_dataset:
+  logits = model(x)
+  prediction = tf.argmax(logits, axis=1, output_type=tf.int32)
+  test_accuracy(prediction, y)
+
+print("Test set accuracy: {:.3%}".format(test_accuracy.result()))
+
+# USE THE MODEL TO MAKE PREDICTIONS 
+
+predict_dataset = tf.convert_to_tensor([
+    [5.1, 3.3, 1.7, 0.5,],
+    [5.9, 3.0, 4.2, 1.5,],
+    [6.9, 3.1, 5.4, 2.1]
+])
+
+predictions = model(predict_dataset)
+
+for i, logits in enumerate(predictions):
+  class_idx = tf.argmax(logits).numpy()
+  p = tf.nn.softmax(logits)[class_idx]
+  name = class_names[class_idx]
+  print("Example {} prediction: {} ({:4.1f}%)".format(i, name, 100*p))
+
+
+  
