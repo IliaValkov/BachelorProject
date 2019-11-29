@@ -90,27 +90,10 @@ train_dataset = train_dataset.map(pack_features_vector)
 
 # DECLARE THE MODEL
 # if rank == 0: 
-model = tf.keras.Sequential()
-
-layer1 = tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,))
-layer2 = tf.keras.layers.Dense(10, activation=tf.nn.relu)
-layer3 = tf.keras.layers.Dense(3)
-
-layers = [layer1, layer2, layer3]
-
-if rank == 0:
-    payload = []
-    for l in layers: 
-        payload.append(l.get_weights())
-else: 
-    payload = None
-
-layer_weights = comm.bcast(payload, root = 0)
-
-for i, l in enumerate(layers): 
-    l.set_weights(layer_weights[i])
-    model.add(l)
-
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),
+    tf.keras.layers.Dense(10, activation=tf.nn.relu),
+    tf.keras.layers.Dense(3)])
 
 # DECALARE A LOSS FUNCTION
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
@@ -140,7 +123,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 201
+num_epochs = 1
 print("Process {} Loss test: {}".format(rank,l))
 
 
