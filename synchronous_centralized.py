@@ -66,7 +66,7 @@ print(f"Label: {label_name}")
 class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
 # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
-batch_size = 10
+batch_size = 5
 
 if rank == 0: 
     print(f"Batch size is: {batch_size}")
@@ -90,10 +90,25 @@ train_dataset = train_dataset.map(pack_features_vector)
 
 # DECLARE THE MODEL
 # if rank == 0: 
-model = tf.keras.Sequential([
-    tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),
-    tf.keras.layers.Dense(10, activation=tf.nn.relu),
-    tf.keras.layers.Dense(3)])
+layers = [  tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),
+            tf.keras.layers.Dense(10, activation=tf.nn.relu),
+            tf.keras.layers.Dense(3)]
+
+model = tf.keras.Sequential(layers)
+
+if rank == 0:
+    weights = []
+    for l in model.layers: 
+        weights.append(l.get_weights())
+
+else: 
+    weights = None 
+
+weights_to_use = comm.bcast(weights, root = 0 )
+
+for i, l in enumerate(model.layers): 
+    l.set_weights(weights_to_use[i])
+#    print(f"Process {rank} layer {i} weights: {l.get_weights()}")
 
 # DECALARE A LOSS FUNCTION
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
@@ -192,21 +207,6 @@ finish = time.perf_counter()
 
 print(f"Process {rank} finished in {round(finish-start,2)} second(s).")
 
-if rank == 0:
-    
-# VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
-    fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
-    fig.suptitle('Training Metrics')
-    axes[0].set_ylabel("Loss", fontsize=14)
-    axes[1].set_ylabel("Acurracy", fontsize=14)
-    axes[1].set_xlabel("Epoch", fontsize=14)
-
-    for index, statistics in enumerate(statistics_gather):
-        axes[0].plot(statistics["loss"])
-        axes[1].plot(statistics["accuracy"])
-
-    plt.show()
-# GET THE TEST SET
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
 
 test_fp = tf.keras.utils.get_file(fname=os.path.basename(test_url),
@@ -232,6 +232,22 @@ for (x, y) in test_dataset:
     test_accuracy(prediction, y)
 
 print("Test {:01d} set accuracy: {:.3%}".format(rank,test_accuracy.result()))
+
+if rank == 0:
+    
+# VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
+    fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+    fig.suptitle('Training Metrics')
+    axes[0].set_ylabel("Loss", fontsize=14)
+    axes[1].set_ylabel("Acurracy", fontsize=14)
+    axes[1].set_xlabel("Epoch", fontsize=14)
+
+    for index, statistics in enumerate(statistics_gather):
+        axes[0].plot(statistics["loss"])
+        axes[1].plot(statistics["accuracy"])
+
+    plt.show()
+# GET THE TEST SET
 
 # # USE THE MODEL TO MAKE PREDICTIONS 
 
