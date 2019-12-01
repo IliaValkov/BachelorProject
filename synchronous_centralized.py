@@ -7,6 +7,8 @@ import os
 import time
 from mpi4py import MPI 
 
+tf.debugging.set_log_device_placement(True)
+
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -138,7 +140,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 201
+num_epochs = 1
 print("Process {} Loss test: {}".format(rank,l))
 
 
@@ -154,7 +156,7 @@ for epoch in range(num_epochs):
     
     set_iter = iter(train_dataset)
 
-    # TRAINING LOOP - using batches of 32
+    # TRAINING LOOP - using batches
     for i in range(max_n_batches):
         try: 
             x, y = next(set_iter)
@@ -184,7 +186,7 @@ for epoch in range(num_epochs):
             reduced = 0
 
         recieved_gradients = comm.bcast(reduced, root = 0)
-        
+
         optimizer.apply_gradients(zip(recieved_gradients, model.trainable_variables))
 
         # Track progress
