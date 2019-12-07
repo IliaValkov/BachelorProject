@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt 
 
 import tensorflow as tf 
-
+import time
 
 print(f"Tensorflow vesion: {tf.__version__}") 
 print(f"Eager execition: {tf.executing_eagerly()}")
@@ -27,7 +27,7 @@ print(f"Label: {label_name}")
 class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
 # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
-batch_size = 10
+batch_size = 5
 train_dataset = tf.data.experimental.make_csv_dataset(
     train_dataset_fp,
     batch_size,
@@ -81,7 +81,7 @@ train_accuracy_results = []
 
 num_epochs = 201
 
-
+start = time.perf_counter()
 # EPOCH LOOP
 for epoch in range(num_epochs):
   
@@ -112,6 +112,11 @@ for epoch in range(num_epochs):
 
   if epoch % 50 == 0:
     print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+
+finish = time.perf_counter()
+
+# DISPLAY RUNTIME OF THE TRAINING LOOP
+print(f"Process finished training loop in {round(finish-start,2)} second(s).")
 
 # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
 fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))

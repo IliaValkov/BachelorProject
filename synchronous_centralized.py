@@ -7,7 +7,7 @@ import os
 import time
 from mpi4py import MPI 
 
-tf.debugging.set_log_device_placement(True)
+# tf.debugging.set_log_device_placement(True)
 
 
 comm = MPI.COMM_WORLD
@@ -72,6 +72,7 @@ batch_size = 5
 
 if rank == 0: 
     print(f"Batch size is: {batch_size}")
+    
 train_dataset = tf.data.experimental.make_csv_dataset(
   train_subset_fp,
   batch_size,
@@ -91,7 +92,7 @@ def pack_features_vector(features, labels):
 train_dataset = train_dataset.map(pack_features_vector)
 
 # DECLARE THE MODEL
-# if rank == 0: 
+
 layers = [  tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),
             tf.keras.layers.Dense(10, activation=tf.nn.relu),
             tf.keras.layers.Dense(3)]
@@ -102,7 +103,6 @@ if rank == 0:
     weights = []
     for l in model.layers: 
         weights.append(l.get_weights())
-
 else: 
     weights = None 
 
@@ -110,7 +110,6 @@ weights_to_use = comm.bcast(weights, root = 0 )
 
 for i, l in enumerate(model.layers): 
     l.set_weights(weights_to_use[i])
-#    print(f"Process {rank} layer {i} weights: {l.get_weights()}")
 
 # DECALARE A LOSS FUNCTION
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
@@ -140,7 +139,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 1
+num_epochs = 201
 print("Process {} Loss test: {}".format(rank,l))
 
 
@@ -207,7 +206,7 @@ for epoch in range(num_epochs):
 
 finish = time.perf_counter() 
 
-print(f"Process {rank} finished in {round(finish-start,2)} second(s).")
+print(f"Process {rank} finished training loop in {round(finish-start,2)} second(s).")
 
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
 
@@ -223,6 +222,7 @@ test_dataset = tf.data.experimental.make_csv_dataset(
     num_epochs=1,
     shuffle=False)
 
+# GET THE TEST SET
 test_dataset = test_dataset.map(pack_features_vector)
 
 # EVALUATE THE MODEL ON THE TEST DATASET
@@ -249,7 +249,6 @@ if rank == 0:
         axes[1].plot(statistics["accuracy"])
 
     plt.show()
-# GET THE TEST SET
 
 # # USE THE MODEL TO MAKE PREDICTIONS 
 
