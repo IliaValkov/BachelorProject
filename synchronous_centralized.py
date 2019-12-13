@@ -7,7 +7,7 @@ import os
 import time
 from mpi4py import MPI 
 
-# tf.debugging.set_log_device_placement(True)
+tf.debugging.set_log_device_placement(True)
 
 
 comm = MPI.COMM_WORLD
