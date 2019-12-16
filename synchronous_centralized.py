@@ -6,9 +6,7 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-gpus = tf.config.experimental.list_physical_devices('GPU')
-
-device_name = gpus[rank].name 
+device_name = f"/device:GPU:{rank}"
 
 print(device_name)
 with tf.device(device_name):
