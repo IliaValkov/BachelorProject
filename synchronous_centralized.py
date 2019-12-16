@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals 
 import tensorflow as tf 
 from mpi4py import MPI 
+tf.debugging.set_log_device_placement(True)
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -17,7 +18,6 @@ with tf.device(device_name):
     import os
     import time
 
-    tf.debugging.set_log_device_placement(True)
 
 
 
