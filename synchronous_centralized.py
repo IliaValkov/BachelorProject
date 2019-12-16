@@ -17,6 +17,11 @@ size = comm.Get_size()
 print(f"Tensorflow vesion: {tf.__version__}") 
 print(f"Eager execition: {tf.executing_eagerly()}")
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+
+device_name = gpus[rank].name 
+
+print(device_name)
 
 if rank == 0: 
     subsets_dir_path = "./subsets"
@@ -145,64 +150,66 @@ print("Process {} Loss test: {}".format(rank,l))
 
 start = time.perf_counter()
 # EPOCH LOOP
-for epoch in range(num_epochs):
-  
-    # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
-    epoch_loss_avg = tf.keras.metrics.Mean()
 
-    # CALCULATES HOW OFTEN PREDICTIONS MATCHES INTEGER LABELS
-    epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
-    
-    set_iter = iter(train_dataset)
+with tf.device(device_name):
+    for epoch in range(num_epochs):
+      
+        # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
+        epoch_loss_avg = tf.keras.metrics.Mean()
 
-    # TRAINING LOOP - using batches
-    for i in range(max_n_batches):
-        try: 
-            x, y = next(set_iter)
-            # Compute loss value and gradients
-            loss_value, grads = grad(model, x, y)
+        # CALCULATES HOW OFTEN PREDICTIONS MATCHES INTEGER LABELS
+        epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
+        
+        set_iter = iter(train_dataset)
+
+        # TRAINING LOOP - using batches
+        for i in range(max_n_batches):
+            try: 
+                x, y = next(set_iter)
+                # Compute loss value and gradients
+                loss_value, grads = grad(model, x, y)
+                
+                # send to master node for reducing
+                payload = grads
             
-            # send to master node for reducing
-            payload = grads
-        
-        except StopIteration as e: 
-            # signalize you dont have anything to send 
-            payload = "EOS"
-        
-        # Gather a list of all gradients or "EOS" messages
-        #print(f"Sending {type(payload)} from rank {rank} i : {i}")
-        payload_gather = comm.gather(payload, root = 0) 
-        
-        if rank == 0 : 
-            filtered = filter(lambda n: n != "EOS", payload_gather)
+            except StopIteration as e: 
+                # signalize you dont have anything to send 
+                payload = "EOS"
+            
+            # Gather a list of all gradients or "EOS" messages
+            #print(f"Sending {type(payload)} from rank {rank} i : {i}")
+            payload_gather = comm.gather(payload, root = 0) 
+            
+            if rank == 0 : 
+                filtered = filter(lambda n: n != "EOS", payload_gather)
 
-            reduced = []
+                reduced = []
 
-            for grad_tuple in zip(*filtered): 
-                reduced.append(tf.math.add_n (list(grad_tuple)) / size) 
-            #https://tech.preferred.jp/en/blog/technologies-behind-distributed-deep-learning-allreduce/
-        else: 
-            reduced = 0
+                for grad_tuple in zip(*filtered): 
+                    reduced.append(tf.math.add_n (list(grad_tuple)) / size) 
+                #https://tech.preferred.jp/en/blog/technologies-behind-distributed-deep-learning-allreduce/
+            else: 
+                reduced = 0
 
-        recieved_gradients = comm.bcast(reduced, root = 0)
+            recieved_gradients = comm.bcast(reduced, root = 0)
 
-        optimizer.apply_gradients(zip(recieved_gradients, model.trainable_variables))
+            optimizer.apply_gradients(zip(recieved_gradients, model.trainable_variables))
 
-        # Track progress
-        epoch_loss_avg(loss_value)  # Add current batch loss
-        epoch_accuracy(y, model(x)) # Compare predicted label to actual label
+            # Track progress
+            epoch_loss_avg(loss_value)  # Add current batch loss
+            epoch_accuracy(y, model(x)) # Compare predicted label to actual label
 
 
-    # End epoch
-    train_loss_results.append(epoch_loss_avg.result())
-    train_accuracy_results.append(epoch_accuracy.result())
+        # End epoch
+        train_loss_results.append(epoch_loss_avg.result())
+        train_accuracy_results.append(epoch_accuracy.result())
 
-    statistics = {"rank": rank,"loss": train_loss_results,"accuracy":train_accuracy_results}
+        statistics = {"rank": rank,"loss": train_loss_results,"accuracy":train_accuracy_results}
 
-    statistics_gather = comm.gather(statistics, root = 0)
+        statistics_gather = comm.gather(statistics, root = 0)
 
-    if epoch % 50 == 0:
-        print("Process: {:01d}  Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+        if epoch % 50 == 0:
+            print("Process: {:01d}  Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
 
 finish = time.perf_counter() 
 
