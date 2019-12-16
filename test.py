@@ -14,18 +14,14 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-if rank == 0: 
-    device_name = ""
+gpus = tf.config.experimental.list_physical_devices('GPU')
 
-elif rank == 1: 
-    device_name = ""
+device_name = gpus[rank].name 
+
+print(device_name)
 
 print(f"Tensorflow vesion: {tf.__version__}") 
 print(f"Eager execition: {tf.executing_eagerly()}")
 
-import tensorflow as tf
-gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-    print("Name:", gpu.name, "  Type:", gpu.device_type)
 
 
