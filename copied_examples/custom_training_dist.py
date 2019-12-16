@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 # Import TensorFlow
 import tensorflow as tf
+tf.debugging.set_log_device_placement(True)
 
 # Helper libraries
 import numpy as np
@@ -26,7 +27,7 @@ test_images = test_images / np.float32(255)
 
 # If the list of devices is not specified in the
 # `tf.distribute.MirroredStrategy` constructor, it will be auto-detected.
-strategy = tf.distribute.MirroredStrategy()
+strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
 print ('Number of devices: {}'.format(strategy.num_replicas_in_sync))
 
 BUFFER_SIZE = len(train_images)
