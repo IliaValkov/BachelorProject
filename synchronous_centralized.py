@@ -153,7 +153,7 @@ with tf.device(cpu_name):
     start = time.perf_counter()
     # EPOCH LOOP
 
-    tf.device(gpu_name)
+    with tf.device(gpu_name):
         for epoch in range(num_epochs):
           
             # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
