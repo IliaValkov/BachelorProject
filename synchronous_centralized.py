@@ -18,9 +18,6 @@ with tf.device(cpu_name):
     import os
     import time
 
-
-
-
     print(f"Tensorflow vesion: {tf.__version__}") 
     print(f"Eager execition: {tf.executing_eagerly()}")
 
