@@ -27,7 +27,7 @@ print(f"Label: {label_name}")
 class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
 # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
-batch_size = 5
+batch_size = 20
 train_dataset = tf.data.experimental.make_csv_dataset(
     train_dataset_fp,
     batch_size,
@@ -81,6 +81,16 @@ train_accuracy_results = []
 
 num_epochs = 201
 
+def training_step(model, inputs, targets):
+  with tf.GradientTape() as tape:
+    loss_value = loss(model, inputs, targets)
+
+  grads = tape.gradient(loss_value, model.trainable_variables)
+
+  optimizer.apply_gradients(zip(grads, model.trainable_variables))
+
+  return loss_value
+
 start = time.perf_counter()
 # EPOCH LOOP
 for epoch in range(num_epochs):
@@ -96,11 +106,10 @@ for epoch in range(num_epochs):
     # Optimize the model
    
     # Compute loss value and gradients
-    loss_value, grads = grad(model, x, y)
+    loss_value = training_step(model, x, y)
     
     # apply gradients to model
-    optimizer.apply_gradients(zip(grads, model.trainable_variables))
-
+    
     # Track progress
     epoch_loss_avg(loss_value)  # Add current batch loss
     # Compare predicted label to actual label

@@ -1,6 +1,11 @@
 from __future__ import absolute_import, division, print_function, unicode_literals 
 import tensorflow as tf 
 from mpi4py import MPI 
+from tools import csv_splitter
+import math
+import os
+import time
+
 #tf.debugging.set_log_device_placement(True)
 
 comm = MPI.COMM_WORLD
@@ -13,10 +18,6 @@ print(gpu_name)
 with tf.device(cpu_name):
 
     #import matplotlib.pyplot as plt 
-    from tools import csv_splitter
-    import math
-    import os
-    import time
 
     print(f"Tensorflow vesion: {tf.__version__}") 
     print(f"Eager execition: {tf.executing_eagerly()}")
@@ -72,7 +73,7 @@ with tf.device(cpu_name):
     class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
     # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
-    batch_size = 5
+    batch_size = 20
 
     if rank == 0: 
         print(f"Batch size is: {batch_size}")

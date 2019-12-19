@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf 
 import horovod.tensorflow as hvd
+import time
 
 print(f"Tensorflow vesion: {tf.__version__}") 
 print(f"Eager execition: {tf.executing_eagerly()}")
@@ -11,6 +12,7 @@ print(f"Eager execition: {tf.executing_eagerly()}")
 hvd.init()
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.visible_device_list = str(hvd.local_rank())
+print(str(hvd.local_rank()))
 
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
@@ -77,7 +79,7 @@ def grad(model, inputs, targets):
   return loss_value, tape.gradient(loss_value, model.trainable_variables)
 
 # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
-optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
+optimizer = tf.keras.optimizers.SGD(learning_rate=0.01*hvd.size())
 
 optimizer = hvd.DistributedOptimizer(optimizer)
 
@@ -106,7 +108,7 @@ train_accuracy_results = []
 
 num_epochs = 201
 
-
+start = time.perf_counter()
 # EPOCH LOOP
 for epoch in range(num_epochs):
   # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
@@ -132,6 +134,11 @@ for epoch in range(num_epochs):
 
   if epoch % 50 == 0:
     print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+
+end = time.perf_counter()
+
+print(f"Runtime for process {hvd.local_rank()} is : {end - start} seconds.")
+
 
 # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
 fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
