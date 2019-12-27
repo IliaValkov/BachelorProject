@@ -13,7 +13,6 @@ hvd.init()
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.visible_device_list = str(hvd.local_rank())
 
-
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
 train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
@@ -80,8 +79,6 @@ def grad(model, inputs, targets):
 
 # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
 optimizer = tf.keras.optimizers.SGD(learning_rate=0.01*hvd.size())
-
-#optimizer = hvd.DistributedOptimizer(optimizer)
 
 hooks = [hvd.BroadcastGlobalVariablesHook(0)]
 
