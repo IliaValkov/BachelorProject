@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf 
 import time
+from varables import BATCH_SIZE as b_size
 
 print(f"Tensorflow vesion: {tf.__version__}") 
 print(f"Eager execition: {tf.executing_eagerly()}")
@@ -27,7 +28,7 @@ print(f"Label: {label_name}")
 class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
 # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
-batch_size = 20
+batch_size = b_size
 train_dataset = tf.data.experimental.make_csv_dataset(
     train_dataset_fp,
     batch_size,
