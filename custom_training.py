@@ -29,6 +29,7 @@ class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
 # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
 batch_size = b_size
+print(f"batch_size: {batch_size}")
 train_dataset = tf.data.experimental.make_csv_dataset(
     train_dataset_fp,
     batch_size,

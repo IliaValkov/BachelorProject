@@ -80,7 +80,7 @@ with strategy.scope():
     return loss_value, tape.gradient(loss_value, model.trainable_variables)
 
   # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
-  optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
+  optimizer = tf.keras.optimizers.SGD(learning_rate=0.03)
   model = create_model()
   checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
 
