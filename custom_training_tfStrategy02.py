@@ -10,6 +10,10 @@ print(f"Eager execition: {tf.executing_eagerly()}")
 
 strategy = tf.distribute.MirroredStrategy(cross_device_ops=tf.distribute.HierarchicalCopyAllReduce())
 
+checkpoint_dir = './training_checkpoints'
+checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+
+
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
 train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
@@ -56,9 +60,11 @@ def create_model():
   ])
   return model
 
+start = time.perf_counter()
 # DECALARE A LOSS FUNCTION
 with strategy.scope():
   loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
+  
   # FUNCTION TO CALCULATE THE LOSS
   def loss(model, x, y):
     y_ = model(x)
@@ -75,7 +81,8 @@ with strategy.scope():
   # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
   optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
   model = create_model()
-  
+  checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
+
   # Keep results for plotting
   train_loss_results = []
   train_accuracy_results = []
@@ -96,7 +103,6 @@ with strategy.scope():
     return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses,
                            axis=None)
 
-  start = time.perf_counter()
   # EPOCH LOOP
   for epoch in range(num_epochs):
     
@@ -121,7 +127,42 @@ with strategy.scope():
     train_accuracy_results.append(epoch_accuracy.result())
 
     if epoch % 50 == 0:
+      checkpoint.save(checkpoint_prefix)
       print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
 
-  finish = time.perf_counter()
-  
+finish = time.perf_counter()
+
+# DISPLAY RUNTIME OF THE TRAINING LOOP
+print(f"Process finished training loop in {round(finish-start,2)} second(s).")
+
+test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
+
+test_fp = tf.keras.utils.get_file(fname=os.path.basename(test_url),
+                                  origin=test_url)
+
+# SETUP A DATASET  
+test_dataset = tf.data.experimental.make_csv_dataset(
+    test_fp,
+    batch_size,
+    column_names=column_names,
+    label_name='species',
+    num_epochs=1,
+    shuffle=False)
+
+test_dataset = test_dataset.map(pack_features_vector)
+
+# EVALUATE THE MODEL ON THE TEST DATASET
+test_accuracy = tf.keras.metrics.Accuracy()
+
+new_optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
+new_model = create_model()
+
+checkpoint = tf.train.Checkpoint(optimizer=new_optimizer, model=new_model)
+checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
+
+for (x, y) in test_dataset:
+  logits = model(x)
+  prediction = tf.argmax(logits, axis=1, output_type=tf.int32)
+  test_accuracy(prediction, y)
+
+print("Test set accuracy: {:.3%}".format(test_accuracy.result()))
