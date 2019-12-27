@@ -53,9 +53,13 @@ train_dataset = train_dataset.map(pack_features_vector)
 train_dist_dataset = strategy.experimental_distribute_dataset(train_dataset)
 
 # DECLARE THE MODEL
-# def create_model():
-  
-#   return model
+def create_model():
+  model = tf.keras.Sequential([
+    tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),  # input shape required
+    tf.keras.layers.Dense(10, activation=tf.nn.relu),
+    tf.keras.layers.Dense(3)
+  ])
+  return model
 
 start = time.perf_counter()
 # DECALARE A LOSS FUNCTION
@@ -77,12 +81,7 @@ with strategy.scope():
 
   # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
   optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
-  model = tf.keras.Sequential([
-    tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),  # input shape required
-    tf.keras.layers.Dense(10, activation=tf.nn.relu),
-    tf.keras.layers.Dense(3)
-  ])
-
+  model = create_model()
   checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
 
   # Keep results for plotting

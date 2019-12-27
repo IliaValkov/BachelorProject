@@ -12,7 +12,7 @@ print(f"Eager execition: {tf.executing_eagerly()}")
 hvd.init()
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.visible_device_list = str(hvd.local_rank())
-print(str(hvd.local_rank()))
+
 
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
@@ -81,12 +81,12 @@ def grad(model, inputs, targets):
 # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
 optimizer = tf.keras.optimizers.SGD(learning_rate=0.01*hvd.size())
 
-optimizer = hvd.DistributedOptimizer(optimizer)
+#optimizer = hvd.DistributedOptimizer(optimizer)
 
 hooks = [hvd.BroadcastGlobalVariablesHook(0)]
 
 @tf.function
-def training_step(model, inputs, targets):
+def train_step(model, inputs, targets):
     with tf.GradientTape() as tape:
         loss_value = loss(model, inputs, targets)
         
@@ -94,8 +94,6 @@ def training_step(model, inputs, targets):
     grads = tape.gradient(loss_value, model.trainable_variables)
     
     # apply gradients to model
-    
-    optimizer.get_gradients(loss_value, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     
     return loss_value
@@ -120,9 +118,8 @@ for epoch in range(num_epochs):
   # TRAINING LOOP - using batches of 32
   for x, y in train_dataset:
     
-    loss_value = training_step(model, x, y)
-
-
+    loss_value = train_step(model, x, y)
+    
     # Track progress
     epoch_loss_avg(loss_value)  # Add current batch loss
     # Compare predicted label to actual label
