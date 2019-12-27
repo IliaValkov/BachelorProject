@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf 
 import time
-from varables import BATCH_SIZE as b_size
+from variables import BATCH_SIZE as b_size
 
 print(f"Tensorflow vesion: {tf.__version__}") 
 print(f"Eager execition: {tf.executing_eagerly()}")
