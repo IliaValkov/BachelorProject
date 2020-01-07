@@ -104,6 +104,7 @@ with tf.device(cpu_name):
 
     model = tf.keras.Sequential(layers)
 
+    # broadcast variables from process 0 to all processes
     if rank == 0:
         weights = []
         for l in model.layers: 
@@ -119,17 +120,11 @@ with tf.device(cpu_name):
     # DECALARE A LOSS FUNCTION
     loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-    # GET A BATCH OF FEATURES AND LABELS
-    features, labels = next(iter(train_dataset))
-
     # FUNCTION TO CALCULATE THE LOSS
     def loss(model, x, y):
       y_ = model(x)
 
       return loss_object(y_true=y, y_pred=y_)
-
-    # CALCULATE LOSS PRE-TRAINING
-    l = loss(model, features, labels)
 
     # FUNCTION TO CALCULATE THE GRADIENTS
     def grad(model, inputs, targets):
