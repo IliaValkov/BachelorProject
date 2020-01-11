@@ -10,6 +10,15 @@ dist = Dist()
 gpus = tf.config.experimental.list_physical_devices('GPU')
 print("Num GPUs Available: ", len(gpus))
 
+if gpus:
+  try:
+    tf.config.experimental.set_visible_devices(gpus[dist.rank], 'GPU')
+    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU", "Process",dist.rank)
+  except RuntimeError as e:
+    # Visible devices must be set before GPUs have been initialized
+    print(e)
+
 
 
 
