@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 dist = Dist()
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.visible_device_list = str(dist.rank)
+print(f"Device list: {config.gpu_options.visible_device_list}")
 
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
