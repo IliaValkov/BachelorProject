@@ -101,7 +101,7 @@ def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
 
-  grads = dist.ring_all_reduce(tape.gradient(loss_value, model.trainable_variables))
+  grads = dist.all_reduce(tape.gradient(loss_value, model.trainable_variables))
   
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
