@@ -75,7 +75,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 1
+num_epochs = 201
 
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
