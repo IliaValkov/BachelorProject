@@ -28,14 +28,14 @@ print(f"Label: {label_name}")
 class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
 # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
-batch_size = b_size
+batch_size = 10
 print(f"batch_size: {batch_size}")
 train_dataset = tf.data.experimental.make_csv_dataset(
     train_dataset_fp,
     batch_size,
     column_names = column_names,
     label_name = label_name,
-    num_epochs = 10)
+    num_epochs = 1)
 
 def pack_features_vector(features, labels):
   """Pack the features into a single array."""
@@ -82,8 +82,6 @@ def training_step(model, inputs, targets):
     loss_value = loss(model, inputs, targets)
 
   grads = tape.gradient(loss_value, model.trainable_variables)
-  print("HERE COME NEW GRADS")
-  print(grads)
   
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
