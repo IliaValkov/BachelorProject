@@ -2,8 +2,13 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os 
 import tensorflow as tf 
 from my_framework_prototype import Dist
+import time 
+import matplotlib.pyplot as plt 
 
 dist = Dist()
+config = tf.compat.v1.ConfigProto()
+config.gpu_options.visible_device_list = str(dist.rank())
+
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
 train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
@@ -29,20 +34,26 @@ print(f"batch_size: {batch_size}")
 train_dataset = tf.data.experimental.make_csv_dataset(
     train_dataset_fp,
     batch_size,
-    shuffle = False,
     column_names = column_names,
+    shuffle=False,
     label_name = label_name,
-    num_epochs = 1).unbatch()
+    num_epochs = 4)
 
-dist_train_dataset = train_dataset.shard(dist.size, dist.rank).batch(batch_size)
+train_dataset = dist.distribute_dataset(train_dataset, batch_size)
 
 def pack_features_vector(features, labels):
   """Pack the features into a single array."""
   features = tf.stack(list(features.values()), axis=1)
   return features, labels
 
+train_dataset = train_dataset.map(pack_features_vector)
+        
+# for i, pair in enumerate(train_dataset): 
+#     print(f"Process: {dist.rank}, i = {i}, y = {pair[1]}")
+
 # CREATE SUITABLE FEATURES-LABEL PAIRS
-dist_train_dataset = dist_train_dataset.map(pack_features_vector)
+
+# dist_train_dataset = dist_train_dataset.map(pack_features_vector)
 
 # DECLARE THE MODEL
 model = dist.replicate_model(model=tf.keras.Sequential([
@@ -54,18 +65,11 @@ model = dist.replicate_model(model=tf.keras.Sequential([
 #DECALARE A LOSS FUNCTION
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-# GET A BATCH OF FEATURES AND LABELS
-features, labels = next(iter(dist_train_dataset))
-
 # FUNCTION TO CALCULATE THE LOSS
 def loss(model, x, y):
   y_ = model(x)
 
   return loss_object(y_true=y, y_pred=y_)
-
-# CALCULATE LOSS PRE-TRAINING
-l = loss(model, features, labels)
-print("Loss test: {}".format(l))
 
 # FUNCTION TO CALCULATE THE GRADIENTS
 def grad(model, inputs, targets):
@@ -82,11 +86,12 @@ train_accuracy_results = []
 
 num_epochs = 201
 
+start = time.perf_counter()
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
 
-  grads = dist.all_reduce(tape.gradient(loss_value, model.trainable_variables))
+  grads = dist.ring_all_reduce(tape.gradient(loss_value, model.trainable_variables))
   
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
@@ -102,7 +107,7 @@ for epoch in range(num_epochs):
   epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
 
   # TRAINING LOOP
-  for x, y in dist_train_dataset:
+  for x, y in train_dataset:
     # Optimize the model
    
     # Compute loss value and gradients
@@ -120,4 +125,47 @@ for epoch in range(num_epochs):
   train_accuracy_results.append(epoch_accuracy.result())
 
   if epoch % 50 == 0:
-    print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+    print("Process: {} Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(dist.   rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+
+end = time.perf_counter()
+print(f"Process {dist.rank} finished training loop in {round(end-start,2)} second(s).")
+print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
+print(f"Process {dist.rank} Reduction time: {round(dist.time_spend_reduction, 2)} second(s)")
+
+# VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
+fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+fig.suptitle('Training Metrics')
+
+axes[0].set_ylabel("Loss", fontsize=14)
+axes[0].plot(train_loss_results)
+
+axes[1].set_ylabel("Accuracy", fontsize=14)
+axes[1].set_xlabel("Epoch", fontsize=14)
+axes[1].plot(train_accuracy_results)
+plt.show()
+
+# SETUP A DATASET  
+test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
+
+test_fp = tf.keras.utils.get_file(fname=os.path.basename(test_url),
+                                  origin=test_url)
+
+test_dataset = tf.data.experimental.make_csv_dataset(
+    test_fp,
+    batch_size,
+    column_names=column_names,
+    label_name='species',
+    num_epochs=1,
+    shuffle=False)
+
+test_dataset = test_dataset.map(pack_features_vector)
+
+# EVALUATE THE MODEL ON THE TEST DATASET
+test_accuracy = tf.keras.metrics.Accuracy()
+
+for (x, y) in test_dataset:
+  logits = model(x)
+  prediction = tf.argmax(logits, axis=1, output_type=tf.int32)
+  test_accuracy(prediction, y)
+
+print("Test set (Process {})accuracy: {:.3%}".format(dist.rank,test_accuracy.result()))

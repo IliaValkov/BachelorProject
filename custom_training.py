@@ -35,7 +35,7 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     batch_size,
     column_names = column_names,
     label_name = label_name,
-    num_epochs = 1)
+    num_epochs = 10)
 
 def pack_features_vector(features, labels):
   """Pack the features into a single array."""
@@ -68,12 +68,6 @@ def loss(model, x, y):
 l = loss(model, features, labels)
 print("Loss test: {}".format(l))
 
-# FUNCTION TO CALCULATE THE GRADIENTS
-def grad(model, inputs, targets):
-  with tf.GradientTape() as tape:
-    loss_value = loss(model, inputs, targets)
-  return loss_value, tape.gradient(loss_value, model.trainable_variables)
-
 # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
 optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 
@@ -81,14 +75,16 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 201
+num_epochs = 1
 
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
 
   grads = tape.gradient(loss_value, model.trainable_variables)
-
+  print("HERE COME NEW GRADS")
+  print(grads)
+  
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
   return loss_value
