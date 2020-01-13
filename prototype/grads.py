@@ -76,53 +76,69 @@ with tf.GradientTape() as tape:
 
 grads = tape.gradient(loss_value, model.trainable_variables)
 
-ds = Dist()
-import numpy as np
-deconstructed = ds.deconstruct(grads)
-
-# print(deconstructed)
-
-array_form_tensor = deconstructed.numpy()
+gradients_sizes = [tf.size(g) for g in grads]
+gradients_shapes = tf.shape_n(grads) 
         
-new_list = np.array_split(array_form_tensor,2)
-new_list = [tf.convert_to_tensor(arr) for arr in new_list]
-print(new_list)
+simple_arr = []
+rt = 0
+return_grads = []
+begin = 0
+import math
+def chunks(l, n):
+    for i in range(0, len(l), n):
+        yield l[i:i+n]
+
+dt = grads[0].dtype
+for i in range(201):
+  return_grads = []
+  s = time.perf_counter()
+  # DECONSTRUCTION  
+  for g in grads: 
+    simple_arr = simple_arr + [v for v in g.numpy().flatten()]
+
+    # TODO: Find a good splitting function
+  n = math.ceil(len(simple_arr)/4)
+  div_list = list(chunks(simple_arr,n))
+  
+  # RECONSTRUCTION
+  new_arr = []
+  for a in div_list:
+    new_arr += a
+
+  for size, shape in zip(gradients_sizes, gradients_shapes):
+    g = tf.constant(new_arr[begin:size+begin], dtype = dt)
+    g = tf.reshape(g, shape)  
+    begin = begin + size
+
+    return_grads.append(g)
+
+  e = time.perf_counter()
+  rt = rt + (e - s)
+
+print("time",round((e - s), 2))
 
 
-# reconstructed = ds.reconstruct(deconstructed)
 
-# print(reconstructed)
+d = Dist()
 
-# print(grads[2])
+for i in range(1): 
+  e = time.perf_counter()
+  print(grads[0].dtype)
+  g = d.deconstruct_faster(grads)  
+  g = d.reconstruct_faster(g)
 
-# tensor_shapes = []
-# tensor_sizes = []
-
-# tensor_shapes_n = tf.shape_n(grads)
-
-# for i, t in enumerate(grads): 
-#     tensor_sizes.append(tf.size(t))
-#     if tf.rank(t) > 1: 
-#         print(f"t size is {tf.size(t)}")
-#         grads[i] = tf.reshape(t, [tf.size(t)])
-
-# # print(f"tensor_sizes {tensor_sizes}")
-# # print(f"tensor_shapes {tensor_shapes}")
+  e = time.perf_counter()
+  rt = rt + (e - s)
 
 
-# new_t = tf.concat(grads,0)    
-# print(new_t)
-# # here im ready to all reduce
-# offset = 0
-# # after all reduce i have rebuild the shape of the tensor
-# reconstructed_grads = []
-# for size, shape in zip(tensor_sizes, tensor_shapes_n): 
-#     # print(f"size {size}")
-#     print(f"shape {shape}")
-#     t = tf.slice(new_t, [offset], [size])
-#     t = tf.reshape( t , shape)
-#     offset = offset + size
-#     reconstructed_grads.append(t)
 
-# print("reconstructed_grads".upper())
-# print(reconstructed_grads[2])
+for i in range(201): 
+  e = time.perf_counter()
+  
+  g = d.deconstruct(grads)  
+  g = d.reconstruct(g)
+
+  e = time.perf_counter()
+  rt = rt + (e - s)
+
+print("time",round((e - s), 2))

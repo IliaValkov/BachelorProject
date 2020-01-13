@@ -7,18 +7,6 @@ import matplotlib.pyplot as plt
 
 dist = Dist()
 
-gpus = tf.config.experimental.list_physical_devices('GPU')
-print("Num GPUs Available: ", len(gpus))
-
-if gpus:
-  try:
-    tf.config.experimental.set_visible_devices(gpus[dist.rank], 'GPU')
-    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU", "Process",dist.rank)
-  except RuntimeError as e:
-    # Visible devices must be set before GPUs have been initialized
-    print(e)
-
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
 train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
@@ -47,7 +35,7 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     column_names = column_names,
     shuffle=False,
     label_name = label_name,
-    num_epochs = 1)
+    num_epochs = 4)
 
 train_dataset = dist.distribute_dataset(train_dataset, batch_size)
 
@@ -58,9 +46,6 @@ def pack_features_vector(features, labels):
 
 train_dataset = train_dataset.map(pack_features_vector)
         
-# for i, pair in enumerate(train_dataset): 
-#     print(f"Process: {dist.rank}, i = {i}, y = {pair[1]}")
-
 # CREATE SUITABLE FEATURES-LABEL PAIRS
 
 # dist_train_dataset = dist_train_dataset.map(pack_features_vector)
@@ -101,6 +86,7 @@ def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
 
+  # grads = dist.ring_all_reduce_faster(tape.gradient(loss_value, model.trainable_variables))
   grads = dist.ring_all_reduce(tape.gradient(loss_value, model.trainable_variables))
   
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -139,8 +125,11 @@ for epoch in range(num_epochs):
 
 end = time.perf_counter()
 print(f"Process {dist.rank} finished training loop in {round(end-start,2)} second(s).")
-print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
-print(f"Process {dist.rank} Reduction time: {round(dist.time_spend_reduction, 2)} second(s)")
+print(f"Process {dist.rank} Deconst time: {round(dist.time_spend_de, 2)} second(s)")
+print(f"Process {dist.rank} Reconst time: {round(dist.time_spend_re, 2)} second(s)")
+
+print(f"Process {dist.rank} Reduction (only) time: {round((dist.time_spend_reduction - (dist.time_spend_re + dist.time_spend_de)), 2)} second(s)")
+print(f"Process {dist.rank} Reduction time: {round((dist.time_spend_reduction), 2)} second(s)")
 
 # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
 fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
@@ -152,7 +141,7 @@ axes[0].plot(train_loss_results)
 axes[1].set_ylabel("Accuracy", fontsize=14)
 axes[1].set_xlabel("Epoch", fontsize=14)
 axes[1].plot(train_accuracy_results)
-plt.show()
+# plt.show()
 
 # SETUP A DATASET  
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"

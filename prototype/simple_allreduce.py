@@ -7,17 +7,6 @@ import matplotlib.pyplot as plt
 
 dist = Dist()
 
-gpus = tf.config.experimental.list_physical_devices('GPU')
-print("Num GPUs Available: ", len(gpus))
-
-if gpus:
-  try:
-    tf.config.experimental.set_visible_devices(gpus[dist.rank], 'GPU')
-    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU", "Process",dist.rank)
-  except RuntimeError as e:
-    # Visible devices must be set before GPUs have been initialized
-    print(e)
 
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
@@ -47,7 +36,7 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     column_names = column_names,
     shuffle=False,
     label_name = label_name,
-    num_epochs = 1)
+    num_epochs = 4)
 
 train_dataset = dist.distribute_dataset(train_dataset, batch_size)
 
@@ -139,7 +128,7 @@ for epoch in range(num_epochs):
 
 end = time.perf_counter()
 print(f"Process {dist.rank} finished training loop in {round(end-start,2)} second(s).")
-print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
+# print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
 print(f"Process {dist.rank} Reduction time: {round(dist.time_spend_reduction, 2)} second(s)")
 
 # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
@@ -152,7 +141,7 @@ axes[0].plot(train_loss_results)
 axes[1].set_ylabel("Accuracy", fontsize=14)
 axes[1].set_xlabel("Epoch", fontsize=14)
 axes[1].plot(train_accuracy_results)
-plt.show()
+# plt.show()
 
 # SETUP A DATASET  
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
