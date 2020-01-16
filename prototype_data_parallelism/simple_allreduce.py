@@ -47,13 +47,6 @@ def pack_features_vector(features, labels):
 
 train_dataset = train_dataset.map(pack_features_vector)
         
-# for i, pair in enumerate(train_dataset): 
-#     print(f"Process: {dist.rank}, i = {i}, y = {pair[1]}")
-
-# CREATE SUITABLE FEATURES-LABEL PAIRS
-
-# dist_train_dataset = dist_train_dataset.map(pack_features_vector)
-
 # DECLARE THE MODEL
 model = dist.replicate_model(model=tf.keras.Sequential([
   tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),  # input shape required
