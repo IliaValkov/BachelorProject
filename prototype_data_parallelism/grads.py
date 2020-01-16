@@ -6,7 +6,7 @@ import tensorflow as tf
 import time
 
 from my_framework_prototype import Dist
-
+from tensorflow.python.util import nest
 
 
 print(f"Tensorflow vesion: {tf.__version__}") 
@@ -89,12 +89,12 @@ def chunks(l, n):
         yield l[i:i+n]
 
 dt = grads[0].dtype
-for i in range(201):
+for i in range(1):
   return_grads = []
   s = time.perf_counter()
   # DECONSTRUCTION  
   for g in grads: 
-    simple_arr = simple_arr + [v for v in g.numpy().flatten()]
+    simple_arr +=[v for v in g.numpy().flatten()]
 
     # TODO: Find a good splitting function
   n = math.ceil(len(simple_arr)/4)
@@ -105,40 +105,44 @@ for i in range(201):
   for a in div_list:
     new_arr += a
 
+  i = 0
   for size, shape in zip(gradients_sizes, gradients_shapes):
-    g = tf.constant(new_arr[begin:size+begin], dtype = dt)
-    g = tf.reshape(g, shape)  
+    g = new_arr[begin:size+begin]
+    print(grads[i].numpy().tolist())
+    g = nest.pack_sequence_as(grads[i].numpy().tolist(), g)  
     begin = begin + size
-
-    return_grads.append(g)
-
-  e = time.perf_counter()
-  rt = rt + (e - s)
-
-print("time",round((e - s), 2))
-
-
-
-d = Dist()
-
-for i in range(1): 
-  e = time.perf_counter()
-  print(grads[0].dtype)
-  g = d.deconstruct_faster(grads)  
-  g = d.reconstruct_faster(g)
-
-  e = time.perf_counter()
-  rt = rt + (e - s)
-
-
-
-for i in range(201): 
-  e = time.perf_counter()
+    i += 1
+    return_grads.append(tf.constant(g))
   
-  g = d.deconstruct(grads)  
-  g = d.reconstruct(g)
+  print(return_grads)
 
   e = time.perf_counter()
   rt = rt + (e - s)
 
 print("time",round((e - s), 2))
+
+
+
+# d = Dist()
+
+# for i in range(1): 
+#   e = time.perf_counter()
+#   print(grads[0].dtype)
+#   g = d.deconstruct_faster(grads)  
+#   g = d.reconstruct_faster(g)
+
+#   e = time.perf_counter()
+#   rt = rt + (e - s)
+
+
+
+# for i in range(201): 
+#   e = time.perf_counter()
+  
+#   g = d.deconstruct(grads)  
+#   g = d.reconstruct(g)
+
+#   e = time.perf_counter()
+#   rt = rt + (e - s)
+
+# print("time",round((e - s), 2))

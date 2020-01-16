@@ -36,7 +36,7 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     column_names = column_names,
     shuffle=False,
     label_name = label_name,
-    num_epochs = 4)
+    num_epochs = 1)
 
 train_dataset = dist.distribute_dataset(train_dataset, batch_size)
 

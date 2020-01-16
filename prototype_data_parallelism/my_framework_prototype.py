@@ -191,11 +191,6 @@ class Dist():
         self.time_spend_re = self.time_spend_re + (e - s)
         return reconstruncted_grads 
 
-    # @staticmethod
-    # def gen(arr1, arr2):
-    #     for a,b in zip(arr2, arr2):
-    #         yield (a+b)/2
-
     def ring_all_reduce_faster(self, grads): 
         # Deconstruct grads 
         s = time.perf_counter()

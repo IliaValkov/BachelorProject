@@ -35,7 +35,7 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     column_names = column_names,
     shuffle=False,
     label_name = label_name,
-    num_epochs = 4)
+    num_epochs = 1)
 
 train_dataset = dist.distribute_dataset(train_dataset, batch_size)
 
@@ -86,8 +86,8 @@ def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
 
-  # grads = dist.ring_all_reduce_faster(tape.gradient(loss_value, model.trainable_variables))
-  grads = dist.ring_all_reduce(tape.gradient(loss_value, model.trainable_variables))
+  grads = dist.ring_all_reduce_faster(tape.gradient(loss_value, model.trainable_variables))
+  # grads = dist.ring_all_reduce(tape.gradient(loss_value, model.trainable_variables))
   
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
