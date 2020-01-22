@@ -58,10 +58,12 @@ def training_step(model, inputs, targets):
 
   grads = tape.gradient(loss_value, model.trainable_variables)
  
+  # apply gradients to model
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
   return loss_value  
 
+num_epochs = 2
 start = time.perf_counter()
 for epoch in range(num_epochs):
   
@@ -77,8 +79,6 @@ for epoch in range(num_epochs):
    
     # Compute loss value and gradients
     loss_value = training_step(model, x, y)
-    
-    # apply gradients to model
     
     # Track progress
     epoch_loss_avg(loss_value)  # Add current batch loss
