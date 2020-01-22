@@ -285,7 +285,7 @@ class Distribute():
             yield tf.reshape(g, shape)
             begin += size
 
-     def ring_all_reduce_large_lists(self, grads): 
+    def ring_all_reduce_large_lists(self, grads): 
         ''' Function to accumulate the locally computed gradients from all processes,
             perform the reducing operation and distributing back the reduced gradients
             back to all processes. This method distributes the computation of the 
