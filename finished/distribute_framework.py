@@ -50,6 +50,7 @@ class Distribute():
                 except RuntimeError as e:
                   # Visible devices must be set before GPUs have been initialized
                     print(e)
+        print(f"Process {self.rank} sees only device{tf.experimental.get_visible_devices()}".upper())
 
     def distribute_dataset(self, dataset, batch_size):
         dataset = dataset.unbatch()

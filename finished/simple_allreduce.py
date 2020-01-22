@@ -7,155 +7,155 @@ import matplotlib.pyplot as plt
 
 tf.debugging.set_log_device_placement(True)
 dist = Distribute()
-# GET THE DATA
-train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
-train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
-                                           origin=train_dataset_url)
-print("Local copy of the dataset file: {}".format(train_dataset_fp))
+# # GET THE DATA
+# train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
+# train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
+#                                            origin=train_dataset_url)
+# print("Local copy of the dataset file: {}".format(train_dataset_fp))
 
 
-# PREPARE THE FEATURES AND LABELS NAMES
-column_names = ["sepal_length", "sepal_width", "petal_length", "petal_width", "species"]
-features_names = column_names[:-1]
-label_name = column_names[-1]
-print(f"Features names: {features_names}")
-print(f"Label: {label_name}")
+# # PREPARE THE FEATURES AND LABELS NAMES
+# column_names = ["sepal_length", "sepal_width", "petal_length", "petal_width", "species"]
+# features_names = column_names[:-1]
+# label_name = column_names[-1]
+# print(f"Features names: {features_names}")
+# print(f"Label: {label_name}")
 
 
-# DECLARE CLASS NAMES
-class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
+# # DECLARE CLASS NAMES
+# class_names = ["Iris_setosa", "Iris_versicolor", "Iris_virginica"]
 
-# SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
-batch_size = 10
-print(f"batch_size: {batch_size}")
+# # SPECIFY BATCH SIZE AND FORMAT THE DATA USING DATASET
+# batch_size = 10
+# print(f"batch_size: {batch_size}")
 
-train_dataset = tf.data.experimental.make_csv_dataset(
-    train_dataset_fp,
-    batch_size,
-    column_names = column_names,
-    shuffle=False,
-    label_name = label_name,
-    num_epochs = 1)
+# train_dataset = tf.data.experimental.make_csv_dataset(
+#     train_dataset_fp,
+#     batch_size,
+#     column_names = column_names,
+#     shuffle=False,
+#     label_name = label_name,
+#     num_epochs = 1)
 
-train_dataset = dist.distribute_dataset(train_dataset, batch_size)
+# train_dataset = dist.distribute_dataset(train_dataset, batch_size)
 
-def pack_features_vector(features, labels):
-  """Pack the features into a single array."""
-  features = tf.stack(list(features.values()), axis=1)
-  return features, labels
+# def pack_features_vector(features, labels):
+#   """Pack the features into a single array."""
+#   features = tf.stack(list(features.values()), axis=1)
+#   return features, labels
 
-train_dataset = train_dataset.map(pack_features_vector)
+# train_dataset = train_dataset.map(pack_features_vector)
         
-# DECLARE THE MODEL
-model = dist.replicate_model(model=tf.keras.Sequential([
-  tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),  # input shape required
-  tf.keras.layers.Dense(10, activation=tf.nn.relu),
-  tf.keras.layers.Dense(3)
-]))
+# # DECLARE THE MODEL
+# model = dist.replicate_model(model=tf.keras.Sequential([
+#   tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),  # input shape required
+#   tf.keras.layers.Dense(10, activation=tf.nn.relu),
+#   tf.keras.layers.Dense(3)
+# ]))
 
-#DECALARE A LOSS FUNCTION
-loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+# #DECALARE A LOSS FUNCTION
+# loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-# FUNCTION TO CALCULATE THE LOSS
-def loss(model, x, y):
-  y_ = model(x)
+# # FUNCTION TO CALCULATE THE LOSS
+# def loss(model, x, y):
+#   y_ = model(x)
 
-  return loss_object(y_true=y, y_pred=y_)
+#   return loss_object(y_true=y, y_pred=y_)
 
-# FUNCTION TO CALCULATE THE GRADIENTS
-def grad(model, inputs, targets):
-  with tf.GradientTape() as tape:
-    loss_value = loss(model, inputs, targets)
-  return loss_value, tape.gradient(loss_value, model.trainable_variables)
+# # FUNCTION TO CALCULATE THE GRADIENTS
+# def grad(model, inputs, targets):
+#   with tf.GradientTape() as tape:
+#     loss_value = loss(model, inputs, targets)
+#   return loss_value, tape.gradient(loss_value, model.trainable_variables)
 
-# APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
-optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
+# # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
+# optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 
-# Keep results for plotting
-train_loss_results = []
-train_accuracy_results = []
+# # Keep results for plotting
+# train_loss_results = []
+# train_accuracy_results = []
 
-num_epochs = 201
+# num_epochs = 201
 
-def training_step(model, inputs, targets):
-  with tf.GradientTape() as tape:
-    loss_value = loss(model, inputs, targets)
+# def training_step(model, inputs, targets):
+#   with tf.GradientTape() as tape:
+#     loss_value = loss(model, inputs, targets)
 
-  grads = tape.gradient(loss_value, model.trainable_variables)
-  reduced_grads = dist.all_reduce(grads)
+#   grads = tape.gradient(loss_value, model.trainable_variables)
+#   reduced_grads = dist.all_reduce(grads)
   
-  optimizer.apply_gradients(zip(reduced_grads, model.trainable_variables))
+#   optimizer.apply_gradients(zip(reduced_grads, model.trainable_variables))
 
-  return loss_value
+#   return loss_value
 
-# EPOCH LOOP
-start = time.perf_counter()
-for epoch in range(num_epochs):
+# # EPOCH LOOP
+# start = time.perf_counter()
+# for epoch in range(num_epochs):
   
-  # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
-  epoch_loss_avg = tf.keras.metrics.Mean()
+#   # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
+#   epoch_loss_avg = tf.keras.metrics.Mean()
   
-  # CALCULATES HOW OFTEN PREDICTIONS MATCHES INTEGER LABELS
-  epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
+#   # CALCULATES HOW OFTEN PREDICTIONS MATCHES INTEGER LABELS
+#   epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
 
-  # TRAINING LOOP
-  for x, y in train_dataset:
-    ## Optimize the model
+#   # TRAINING LOOP
+#   for x, y in train_dataset:
+#     ## Optimize the model
    
-    # Compute loss value and gradients
-    loss_value = training_step(model, x, y)
+#     # Compute loss value and gradients
+#     loss_value = training_step(model, x, y)
     
-    # Track progress
-    epoch_loss_avg(loss_value)  # Add current batch loss
-    # Compare predicted label to actual label
-    epoch_accuracy(y, model(x))
+#     # Track progress
+#     epoch_loss_avg(loss_value)  # Add current batch loss
+#     # Compare predicted label to actual label
+#     epoch_accuracy(y, model(x))
 
-  # End epoch
-  train_loss_results.append(epoch_loss_avg.result())
-  train_accuracy_results.append(epoch_accuracy.result())
+#   # End epoch
+#   train_loss_results.append(epoch_loss_avg.result())
+#   train_accuracy_results.append(epoch_accuracy.result())
 
-  if epoch % 50 == 0:
-    print("Process: {} Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(dist.   rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+#   if epoch % 50 == 0:
+#     print("Process: {} Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(dist.   rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
 
-end = time.perf_counter()
-print(f"Process {dist.rank} finished training loop in {round(end-start,2)} second(s).")
-# print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
-print(f"Process {dist.rank} Reduction time: {round(dist.time_spend_reduction, 2)} second(s)")
+# end = time.perf_counter()
+# print(f"Process {dist.rank} finished training loop in {round(end-start,2)} second(s).")
+# # print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
+# print(f"Process {dist.rank} Reduction time: {round(dist.time_spend_reduction, 2)} second(s)")
 
-# VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
-fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
-fig.suptitle('Training Metrics')
+# # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
+# fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+# fig.suptitle('Training Metrics')
 
-axes[0].set_ylabel("Loss", fontsize=14)
-axes[0].plot(train_loss_results)
+# axes[0].set_ylabel("Loss", fontsize=14)
+# axes[0].plot(train_loss_results)
 
-axes[1].set_ylabel("Accuracy", fontsize=14)
-axes[1].set_xlabel("Epoch", fontsize=14)
-axes[1].plot(train_accuracy_results)
-# plt.show()
+# axes[1].set_ylabel("Accuracy", fontsize=14)
+# axes[1].set_xlabel("Epoch", fontsize=14)
+# axes[1].plot(train_accuracy_results)
+# # plt.show()
 
-# SETUP A DATASET  
-test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
+# # SETUP A DATASET  
+# test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
 
-test_fp = tf.keras.utils.get_file(fname=os.path.basename(test_url),
-                                  origin=test_url)
+# test_fp = tf.keras.utils.get_file(fname=os.path.basename(test_url),
+#                                   origin=test_url)
 
-test_dataset = tf.data.experimental.make_csv_dataset(
-    test_fp,
-    batch_size,
-    column_names=column_names,
-    label_name='species',
-    num_epochs=1,
-    shuffle=False)
+# test_dataset = tf.data.experimental.make_csv_dataset(
+#     test_fp,
+#     batch_size,
+#     column_names=column_names,
+#     label_name='species',
+#     num_epochs=1,
+#     shuffle=False)
 
-test_dataset = test_dataset.map(pack_features_vector)
+# test_dataset = test_dataset.map(pack_features_vector)
 
-# EVALUATE THE MODEL ON THE TEST DATASET
-test_accuracy = tf.keras.metrics.Accuracy()
+# # EVALUATE THE MODEL ON THE TEST DATASET
+# test_accuracy = tf.keras.metrics.Accuracy()
 
-for (x, y) in test_dataset:
-  logits = model(x)
-  prediction = tf.argmax(logits, axis=1, output_type=tf.int32)
-  test_accuracy(prediction, y)
+# for (x, y) in test_dataset:
+#   logits = model(x)
+#   prediction = tf.argmax(logits, axis=1, output_type=tf.int32)
+#   test_accuracy(prediction, y)
 
-print("Test set (Process {})accuracy: {:.3%}".format(dist.rank,test_accuracy.result()))
+# print("Test set (Process {})accuracy: {:.3%}".format(dist.rank,test_accuracy.result()))
