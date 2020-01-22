@@ -5,7 +5,7 @@ from distribute_framework import Distribute
 import time 
 import matplotlib.pyplot as plt 
 
-
+tf.debugging.set_log_device_placement(True)
 dist = Distribute()
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
