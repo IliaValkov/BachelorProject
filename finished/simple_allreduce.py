@@ -75,7 +75,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 201
+num_epochs = 1
 first = True
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
@@ -84,6 +84,7 @@ def training_step(model, inputs, targets):
   grads = tape.gradient(loss_value, model.trainable_variables)
   if first: 
     print(f"grads[0].device in process {dist.rank} is {grads[0].device}")
+    first = False
   reduced_grads = dist.all_reduce(grads)
   
   optimizer.apply_gradients(zip(reduced_grads, model.trainable_variables))
