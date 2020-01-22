@@ -3,34 +3,53 @@ import tensorflow as tf
 import numpy as np
 import math
 import time
+import os
 
-
-class Dist():
+class Distribute():
+    '''
+        This class delivers functions for distributing the training of a deep neural network 
+    '''
+    # Variable for the MPI communication object
     comm = MPI.COMM_WORLD
+    # Variable holding the rank of a process
     rank = comm.Get_rank()
+    # Variable holding number of processes working on a task
     size = comm.Get_size()
-    # Variables for ring all reduce
+
+    # Variables for reconstructing the shapes of gradients in ring allreduce
     gradients_sizes = None
     gradients_shapes = None
     gradients_ranks = None
+    tensors_dtype = None
+
+    # Variables for coordinating the communication between processes during ring allreduce
     recv_from_p = (rank - 1) % size
     send_to_p = (rank + 1) % size
     chunk_to_send = rank
-    tensors_dtype = None
 
+    # Variables for timing the reduction phase in both allreduce implementations,
+    # as well as the reconstruction and deconstruction phases in ring allreduce
     time_spend_re = 0
     time_spend_de = 0
     time_spend_reduction = 0
 
     def __init__(self):
+        ''' init method for the Distribute object;
+            When a Distribute object is created, it will check if there are available
+            GPUs, and assign one to each process, if the number of processes specified 
+            in the mpirun command does not exceed the number of available devices.
+        '''
         gpus = tf.config.experimental.list_physical_devices('GPU')
-        if gpus:
-            try:
-                tf.config.experimental.set_visible_devices(gpus[self.rank], 'GPU')
-                logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            except RuntimeError as e:
-              # Visible devices must be set before GPUs have been initialized
-                print(e)
+        if gpus:    
+            if len(gpus) < self.size:
+                tf.config.experimental.set_visible_devices([], 'GPU')
+            else:    
+                try:
+                    tf.config.experimental.set_visible_devices(gpus[self.rank], 'GPU')
+                    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+                except RuntimeError as e:
+                  # Visible devices must be set before GPUs have been initialized
+                    print(e)
 
     def distribute_dataset(self, dataset, batch_size):
         dataset = dataset.unbatch()

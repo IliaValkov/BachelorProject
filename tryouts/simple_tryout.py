@@ -3,19 +3,21 @@ import tensorflow as tf
 import numpy as np
 from mpi4py import MPI 
 
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
+tf.debugging.set_log_device_placement(True)
 
-if rank == 0: 
-    x = tf.matmul([[1]], [[2, 3]])
-    comm.send(x ,dest= 1 )
-    print(f"\n Sent from process: {rank} \n")
+# comm = MPI.COMM_WORLD
+# rank = comm.Get_rank()
 
-elif rank == 1 : 
-    x = comm.recv(source = 0)
-    print(f"\n Recieved in process: {rank} \n")
-    print(x)
-    print(x.shape)
-    print(x.dtype)
+# if rank == 0: 
+x = tf.matmul([[1]], [[2, 3]])
+    # comm.send(x ,dest= 1 )
+    # print(f"\n Sent from process: {rank} \n")
+
+# elif rank == 1 : 
+#     x = comm.recv(source = 0)
+# print(f"\n Recieved in process: {rank} \n")
+print(x)
+print(x.shape)
+print(x.dtype)
 
     

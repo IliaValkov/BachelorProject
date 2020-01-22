@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf 
 import time
-from variables import BATCH_SIZE as b_size
+tf.debugging.set_log_device_placement(True)
 
 print(f"Tensorflow vesion: {tf.__version__}") 
 print(f"Eager execition: {tf.executing_eagerly()}")
@@ -75,7 +75,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 201
+num_epochs =  201
 
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
@@ -103,8 +103,6 @@ for epoch in range(num_epochs):
    
     # Compute loss value and gradients
     loss_value = training_step(model, x, y)
-    
-    # apply gradients to model
     
     # Track progress
     epoch_loss_avg(loss_value)  # Add current batch loss

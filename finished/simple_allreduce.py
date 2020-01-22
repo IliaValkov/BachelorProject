@@ -1,12 +1,12 @@
 from __future__ import absolute_import, division, print_function, unicode_literals 
 import os 
 import tensorflow as tf 
-from my_framework_prototype import Dist
+from distribute_framework import Distribute
 import time 
 import matplotlib.pyplot as plt 
 
-dist = Dist()
 
+dist = Distribute()
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
 train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
