@@ -39,18 +39,18 @@ class Distribute():
             GPUs, and assign one to each process, if the number of processes specified 
             in the mpirun command does not exceed the number of available devices.
         '''
-        # gpus = tf.config.experimental.list_physical_devices('GPU')
-        # if gpus:    
-        #     if len(gpus) < self.size:
-        #         tf.config.experimental.set_visible_devices([], 'GPU')
-        #     else:    
-        #         try:
-        #             tf.config.experimental.set_visible_devices(gpus[self.rank], 'GPU')
-        #             logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-        #             print(f"Process {self.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
-        #         except RuntimeError as e:
-        #           # Visible devices must be set before GPUs have been initialized
-        #             print(e)
+        gpus = tf.config.experimental.list_physical_devices('GPU')
+        if gpus:    
+            if len(gpus) < self.size:
+                tf.config.experimental.set_visible_devices([], 'GPU')
+            else:    
+                try:
+                    tf.config.experimental.set_visible_devices(gpus[self.rank], 'GPU')
+                    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+                    print(f"Process {self.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
+                except RuntimeError as e:
+                  # Visible devices must be set before GPUs have been initialized
+                    print(e)
 
     def distribute_dataset(self, dataset, batch_size):
         dataset = dataset.unbatch()

@@ -7,19 +7,6 @@ import matplotlib.pyplot as plt
 
 tf.debugging.set_log_device_placement(True)
 dist = Distribute()
-
-gpus = tf.config.experimental.list_physical_devices('GPU')
-if gpus:    
-  try:
-    tf.config.experimental.set_visible_devices(gpus[dist.rank], 'GPU')
-    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-    print(f"logical_gpus: {logical_gpus}".upper())
-    # print(f"Process {dist.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
-  except RuntimeError as e:
-    # Visible devices must be set before GPUs have been initialized
-    print(e)
-
-
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
 train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
@@ -88,18 +75,13 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 1
-
-
+num_epochs = 201
 
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
 
   grads = tape.gradient(loss_value, model.trainable_variables)
-  
-  print(f"grads[0] in process {dist.rank} are on device {grads[0].device}")
-
   reduced_grads = dist.all_reduce(grads)
   
   optimizer.apply_gradients(zip(reduced_grads, model.trainable_variables))
@@ -108,7 +90,6 @@ def training_step(model, inputs, targets):
 
 # EPOCH LOOP
 start = time.perf_counter()
-print(f"Process {dist.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
 for epoch in range(num_epochs):
   
   # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
