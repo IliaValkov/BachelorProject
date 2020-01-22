@@ -13,6 +13,7 @@ if gpus:
   try:
     tf.config.experimental.set_visible_devices(gpus[dist.rank], 'GPU')
     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    print(f"logical_gpus: {logical_gpus}".upper())
     # print(f"Process {dist.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
   except RuntimeError as e:
     # Visible devices must be set before GPUs have been initialized
