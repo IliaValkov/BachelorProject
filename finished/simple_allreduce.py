@@ -5,7 +5,6 @@ from distribute_framework import Distribute
 import time 
 import matplotlib.pyplot as plt 
 
-tf.debugging.set_log_device_placement(True)
 dist = Distribute()
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
@@ -75,7 +74,6 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
-num_epochs = 201
 
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
@@ -88,6 +86,7 @@ def training_step(model, inputs, targets):
 
   return loss_value
 
+num_epochs = 201
 # EPOCH LOOP
 start = time.perf_counter()
 for epoch in range(num_epochs):
