@@ -95,6 +95,7 @@ def training_step(model, inputs, targets):
 
 # EPOCH LOOP
 start = time.perf_counter()
+print(f"Process {dist.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
 for epoch in range(num_epochs):
   
   # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
