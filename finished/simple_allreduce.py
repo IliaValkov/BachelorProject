@@ -77,7 +77,7 @@ train_accuracy_results = []
 
 num_epochs = 1
 
-first = True
+
 
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
@@ -85,9 +85,7 @@ def training_step(model, inputs, targets):
 
   grads = tape.gradient(loss_value, model.trainable_variables)
   
-  if first: 
-    print(f"grads[0] in process {dist.rank} are on device {grads[0].device}")
-    first = False
+  print(f"grads[0] in process {dist.rank} are on device {grads[0].device}")
 
   reduced_grads = dist.all_reduce(grads)
   
