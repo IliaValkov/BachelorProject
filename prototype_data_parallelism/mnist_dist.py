@@ -67,7 +67,7 @@ def training_step(model, inputs, targets):
 
   return loss_value  
 
-num_epochs = 10
+num_epochs = 2
 train_loss_results = []
 train_accuracy_results = []
 

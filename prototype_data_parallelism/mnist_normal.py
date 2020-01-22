@@ -64,6 +64,9 @@ def training_step(model, inputs, targets):
   return loss_value  
 
 num_epochs = 2
+train_loss_results = []
+train_accuracy_results = []
+
 start = time.perf_counter()
 for epoch in range(num_epochs):
   
