@@ -47,10 +47,10 @@ class Distribute():
                 try:
                     tf.config.experimental.set_visible_devices(gpus[self.rank], 'GPU')
                     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+                    print(f"Process {self.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
                 except RuntimeError as e:
                   # Visible devices must be set before GPUs have been initialized
                     print(e)
-        print(f"Process {self.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
 
     def distribute_dataset(self, dataset, batch_size):
         dataset = dataset.unbatch()
