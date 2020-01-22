@@ -7,6 +7,18 @@ import matplotlib.pyplot as plt
 
 tf.debugging.set_log_device_placement(True)
 dist = Distribute()
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:    
+  try:
+    tf.config.experimental.set_visible_devices(gpus[dist.rank], 'GPU')
+    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    # print(f"Process {dist.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
+  except RuntimeError as e:
+    # Visible devices must be set before GPUs have been initialized
+    print(e)
+
+
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
 train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
