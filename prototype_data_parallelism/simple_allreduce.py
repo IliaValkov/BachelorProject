@@ -1,11 +1,11 @@
 from __future__ import absolute_import, division, print_function, unicode_literals 
 import os 
 import tensorflow as tf 
-from my_framework_prototype import Dist
+from distribute_framework import Distribute
 import time 
 import matplotlib.pyplot as plt 
 
-dist = Dist()
+dist = Distribute()
 
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
@@ -37,7 +37,7 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     label_name = label_name,
     num_epochs = 1)
 
-train_dataset = dist.distribute_dataset(train_dataset, batch_size)
+train_dataset = dist.distribute_dataset(train_dataset, is_batched=True, batch_size=batch_size)
 
 def pack_features_vector(features, labels):
   """Pack the features into a single array."""
@@ -82,7 +82,7 @@ def training_step(model, inputs, targets):
     loss_value = loss(model, inputs, targets)
 
   grads = tape.gradient(loss_value, model.trainable_variables)
-  reduced_grads = dist.all_reduce(grads)
+  reduced_grads = dist.simple_all_reduce(grads)
   
   optimizer.apply_gradients(zip(reduced_grads, model.trainable_variables))
 

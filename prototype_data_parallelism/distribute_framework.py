@@ -46,9 +46,11 @@ class Distribute():
         '''
         gpus = tf.config.experimental.list_physical_devices('GPU')
         if gpus:
-            try:    
+            try:   
+                print(f"len(gpus) < self.size {len(gpus) < self.size}") 
                 if len(gpus) < self.size:
                     tf.config.experimental.set_visible_devices([], 'GPU')
+                    print("HIDE ALL GPUS")
                 else:    
                     tf.config.experimental.set_visible_devices(gpus[self.rank], 'GPU')
                     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
@@ -109,6 +111,7 @@ class Distribute():
         
         return model
 
+        
     def simple_all_reduce(self, grads):
         ''' Function to accumulate the locally computed gradients from all processes,
             perform the reducing operation and distributing back the reduced gradients

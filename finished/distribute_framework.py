@@ -52,7 +52,6 @@ class Distribute():
                 else:    
                     tf.config.experimental.set_visible_devices(gpus[self.rank], 'GPU')
                     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-                    print(f"Process {self.rank} sees only device{tf.config.experimental.get_visible_devices()}".upper())
             except RuntimeError as e:
               # Visible devices must be set before GPUs have been initialized
                 print(e)
@@ -80,7 +79,7 @@ class Distribute():
         if is_batched:
             dataset = dataset.unbatch()
         
-        dist_dataset = dataset.shard(self.size, self.rank)
+        dist_dataset = dataset.shard(num_shards=self.size, index=self.rank)
         
         if is_batched:
             dist_dataset = dist_dataset.batch(batch_size)
@@ -99,9 +98,9 @@ class Distribute():
         '''
         if self.rank == 0:
             dist_w = [w for w in [l.get_weights() for l in model.layers]]
-        else:
-            dist_w = None 
-        
+        else: 
+            dist_w = None
+
         weights = self.comm.bcast(dist_w, root = 0) 
 
         for i, l in enumerate(model.layers): 
@@ -112,7 +111,8 @@ class Distribute():
     def simple_all_reduce(self, grads):
         ''' Function to accumulate the locally computed gradients from all processes,
             perform the reducing operation and distributing back the reduced gradients
-            back to all processes. This method uses one process to accumulate, compute 
+            back to all processes. 
+            This method uses one process to accumulate, compute 
             and distribute back the gradients.
 
             Arguments: 
@@ -144,9 +144,9 @@ class Distribute():
     def ring_all_reduce(self, grads): 
         ''' Function to accumulate the locally computed gradients from all processes,
             perform the reducing operation and distributing back the reduced gradients
-            back to all processes. This method distributes the computation of the 
-            gradient values and the interprocess communication between the participating
-            processes. 
+            back to all processes. 
+            This method distributes the computation of the gradient values and the 
+            interprocess communication between the participating processes. 
 
             Note that this implementation only works with gradients, whose
             total amount of elements does not exceed 400 elements. 

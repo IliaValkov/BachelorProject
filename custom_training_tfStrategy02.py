@@ -132,9 +132,9 @@ with strategy.scope():
       print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
 
 finish = time.perf_counter()
+print(f"Process finished training loop in {round(finish-start,2)} second(s).")
 
 # DISPLAY RUNTIME OF THE TRAINING LOOP
-print(f"Process finished training loop in {round(finish-start,2)} second(s).")
 
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
 

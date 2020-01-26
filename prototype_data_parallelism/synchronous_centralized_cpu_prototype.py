@@ -90,11 +90,14 @@ train_dataset = train_dataset.map(pack_features_vector)
 
 # DECLARE THE MODEL
 
-layers = [  tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),
+layers = [tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),
             tf.keras.layers.Dense(10, activation=tf.nn.relu),
             tf.keras.layers.Dense(3)]
 
-model = tf.keras.Sequential(layers)
+model = tf.keras.Sequential([
+            tf.keras.layers.Dense(10, activation=tf.nn.relu, input_shape=(4,)),
+            tf.keras.layers.Dense(10, activation=tf.nn.relu),
+            tf.keras.layers.Dense(3)])
 
 if rank == 0:
     weights = []
