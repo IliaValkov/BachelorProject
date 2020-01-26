@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf 
 import time
-tf.debugging.set_log_device_placement(True)
 
 print(f"Tensorflow vesion: {tf.__version__}") 
 print(f"Eager execition: {tf.executing_eagerly()}")
@@ -120,18 +119,6 @@ finish = time.perf_counter()
 
 # DISPLAY RUNTIME OF THE TRAINING LOOP
 print(f"Process finished training loop in {round(finish-start,2)} second(s).")
-
-# VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
-fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
-fig.suptitle('Training Metrics')
-
-axes[0].set_ylabel("Loss", fontsize=14)
-axes[0].plot(train_loss_results)
-
-axes[1].set_ylabel("Accuracy", fontsize=14)
-axes[1].set_xlabel("Epoch", fontsize=14)
-axes[1].plot(train_accuracy_results)
-plt.show()
 
 # GET THE TEST SET
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
