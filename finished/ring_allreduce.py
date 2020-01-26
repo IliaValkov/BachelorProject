@@ -119,7 +119,10 @@ for epoch in range(num_epochs):
 
 end = time.perf_counter()
 print(f"Process {dist.rank} finished training loop in {round(end-start,2)} second(s).")
-print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
+pprint(f"Process {dist.rank} Deconst time: {round(dist.time_spend_de, 2)} second(s)")
+print(f"Process {dist.rank} Reconst time: {round(dist.time_spend_re, 2)} second(s)")
+
+print(f"Process {dist.rank} Reduction (only) time: {round((dist.time_spend_reduction - (dist.time_spend_re + dist.time_spend_de)), 2)} second(s)")
 print(f"Process {dist.rank} Reduction time: {round(dist.time_spend_reduction, 2)} second(s)")
 
 # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
