@@ -95,7 +95,7 @@ with strategy.scope():
       # Track progress
       epoch_loss_avg(loss_value)  # Add current batch loss
       # Compare predicted label to actual label
-      epoch_accuracy(y, model(x))
+      # epoch_accuracy(y, model(x))
 
     # End epoch
     train_loss_results.append(epoch_loss_avg.result())
