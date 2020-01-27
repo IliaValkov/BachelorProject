@@ -51,7 +51,7 @@ def loss(model, x, y):
 
   return loss_object(y_true=y, y_pred=y_)
 
-
+@tf.function
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
