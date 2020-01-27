@@ -63,7 +63,7 @@ def training_step(model, inputs, targets):
   return loss_value  
 
 start = time.perf_counter()
-for epoch in range(num_epochs):
+for epoch in range(10):
   
   # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
   epoch_loss_avg = tf.keras.metrics.Mean()
