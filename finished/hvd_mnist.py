@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 # TensorFlow and tf.keras
 import tensorflow as tf
+import horovod.tensorflow as hvd
 from tensorflow import keras
 
 # Helper libraries
@@ -9,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+hvd.init()
 print(f"TensorFlow version: {tf.__version__}")
 
 fashion_mnist = keras.datasets.fashion_mnist
@@ -27,8 +29,9 @@ train_images = train_images / 255.0
 
 test_images = test_images / 255.0
 
+dataset = tf.data.Dataset.from_tensor_slices((train_images, train_labels))
+fmnist_train_ds = dataset.shard(4, hvd.local_rank())
 
-fmnist_train_ds = tf.data.Dataset.from_tensor_slices((train_images, train_labels))
 fmnist_train_ds = fmnist_train_ds.shuffle(5000).batch(50)
 
 
@@ -38,6 +41,7 @@ model = keras.Sequential([
     keras.layers.Dense(128, activation='relu'),
     keras.layers.Dense(10, activation='softmax')
 ])
+
 model.compile(optimizer='adam',
               loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
@@ -50,15 +54,17 @@ def loss(model, x, y):
   y_ = model(x)
 
   return loss_object(y_true=y, y_pred=y_)
+hooks = [hvd.BroadcastGlobalVariablesHook(0)]
 
-
+@tf.function
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
 
+  tape = hvd.DistributedGradientTape(tape)
   grads = tape.gradient(loss_value, model.trainable_variables)
- 
-  # apply gradients to model
+  # grads = dist.simple_all_reduce(grads)<
+  # grads = dist.ring_all_reduce_large_lists(grads)
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
   return loss_value  
@@ -82,6 +88,8 @@ for epoch in range(num_epochs):
    
     # Compute loss value and gradients
     loss_value = training_step(model, x, y)
+    
+    # apply gradients to model
     
     # Track progress
     epoch_loss_avg(loss_value)  # Add current batch loss

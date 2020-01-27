@@ -38,8 +38,12 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     batch_size,
     column_names = column_names,
     label_name = label_name,
-    num_epochs = 1)
-
+    num_epochs = 1, shuffle= False)
+train_dataset = train_dataset.unbatch()
+train_dataset = train_dataset.shard(2, hvd.local_rank())
+train_dataset = train_dataset.repeat(5)
+train_dataset = train_dataset.shuffle(60)
+train_dataset = train_dataset.batch(batch_size)
 def pack_features_vector(features, labels):
   """Pack the features into a single array."""
   features = tf.stack(list(features.values()), axis=1)
@@ -71,12 +75,6 @@ def loss(model, x, y):
 l = loss(model, features, labels)
 print("Loss test: {}".format(l))
 
-# FUNCTION TO CALCULATE THE GRADIENTS
-def grad(model, inputs, targets):
-  with tf.GradientTape() as tape:
-    loss_value = loss(model, inputs, targets)
-  return loss_value, tape.gradient(loss_value, model.trainable_variables)
-
 # APPLIES THE COMPUTED GRADIENTS TO THE MODEL'S VARIABLES TO MINIMIZE THE LOSS FUNCTION
 optimizer = tf.keras.optimizers.SGD(learning_rate=0.01*hvd.size())
 
@@ -95,8 +93,6 @@ def train_step(model, inputs, targets):
     
     return loss_value
 
-
-
 # Keep results for plotting
 train_loss_results = []
 train_accuracy_results = []
@@ -112,7 +108,7 @@ for epoch in range(num_epochs):
   # CALCULATES HOW OFTEN PREDICTIONS MATCHES INTEGER LABELS
   epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
 
-  # TRAINING LOOP - using batches of 32
+  # TRAINING LOOP
   for x, y in train_dataset:
     
     loss_value = train_step(model, x, y)
@@ -131,20 +127,20 @@ for epoch in range(num_epochs):
 
 end = time.perf_counter()
 
-print(f"Runtime for process {hvd.local_rank()} is : {end - start} seconds.")
+print(f"Process {hvd.local_rank()} finished training loop in {round(end-start,2)} second(s).")
 
 
 # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
-fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
-fig.suptitle('Training Metrics')
+# fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+# fig.suptitle('Training Metrics')
 
-axes[0].set_ylabel("Loss", fontsize=14)
-axes[0].plot(train_loss_results)
+# axes[0].set_ylabel("Loss", fontsize=14)
+# axes[0].plot(train_loss_results)
 
-axes[1].set_ylabel("Accuracy", fontsize=14)
-axes[1].set_xlabel("Epoch", fontsize=14)
-axes[1].plot(train_accuracy_results)
-plt.show()
+# axes[1].set_ylabel("Accuracy", fontsize=14)
+# axes[1].set_xlabel("Epoch", fontsize=14)
+# axes[1].plot(train_accuracy_results)
+# plt.show()
 
 # GET THE TEST SET
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
@@ -175,19 +171,19 @@ print("Test set accuracy: {:.3%}".format(test_accuracy.result()))
 
 #USE THE MODEL TO MAKE PREDICTIONS 
 
-predict_dataset = tf.convert_to_tensor([
-    [5.1, 3.3, 1.7, 0.5,],
-    [5.9, 3.0, 4.2, 1.5,],
-    [6.9, 3.1, 5.4, 2.1]
-])
+# predict_dataset = tf.convert_to_tensor([
+#     [5.1, 3.3, 1.7, 0.5,],
+#     [5.9, 3.0, 4.2, 1.5,],
+#     [6.9, 3.1, 5.4, 2.1]
+# ])
 
-predictions = model(predict_dataset)
+# predictions = model(predict_dataset)
 
-for i, logits in enumerate(predictions):
-  class_idx = tf.argmax(logits).numpy()
-  p = tf.nn.softmax(logits)[class_idx]
-  name = class_names[class_idx]
-  print("Example {} prediction: {} ({:4.1f}%)".format(i, name, 100*p))
+# for i, logits in enumerate(predictions):
+#   class_idx = tf.argmax(logits).numpy()
+#   p = tf.nn.softmax(logits)[class_idx]
+#   name = class_names[class_idx]
+#   print("Example {} prediction: {} ({:4.1f}%)".format(i, name, 100*p))
 
 
-  
+#   

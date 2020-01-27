@@ -36,7 +36,7 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     label_name = label_name,
     num_epochs = 1)
 
-train_dataset = dist.distribute_dataset(train_dataset, is_batched=True, batch_size=batch_size)
+train_dataset = dist.distribute_dataset(train_dataset, batch_size=batch_size)
 train_dataset = train_dataset.shuffle(60)
 
 def pack_features_vector(features, labels):

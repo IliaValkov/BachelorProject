@@ -51,12 +51,11 @@ class Distribute():
                     tf.config.experimental.set_visible_devices([], 'GPU')
                 else:    
                     tf.config.experimental.set_visible_devices(gpus[self.rank], 'GPU')
-                    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
             except RuntimeError as e:
               # Visible devices must be set before GPUs have been initialized
                 print(e)
 
-    def distribute_dataset(self, dataset, is_batched=False, batch_size=None):
+    def distribute_dataset(self, dataset, batch_size=None):
         ''' Function for providing each process with a part of the original dataset.
             It is based on tensorflow's Dataset.shard() function and provides a 
             wrapper for it. 
@@ -76,12 +75,13 @@ class Distribute():
             Returns: 
             The sharded Dataset object
         '''
-        if is_batched:
+        if batch_size:
             dataset = dataset.unbatch()
         
         dist_dataset = dataset.shard(num_shards=self.size, index=self.rank)
         
-        if is_batched:
+        if batch_size:
+            dist_dataset = dist_dataset.repeat(5)
             dist_dataset = dist_dataset.batch(batch_size)
 
         return dist_dataset
@@ -94,7 +94,8 @@ class Distribute():
             model - a Model object with defined layers
 
             Returns: 
-            A Model object with the same variables
+            A Model object with the same variables as the ones initialized in the
+            root process
         '''
         if self.rank == 0:
             dist_w = [w for w in [l.get_weights() for l in model.layers]]
@@ -294,7 +295,7 @@ class Distribute():
 
             Note that this method is only for the purpose of showing how the ring all
             reduce would have to be implemented with the given set of tools.(Python,mpi4py).
-            If you have to reduce large lists use the simple all reduce method.
+            If you have to reduce large lists use the simple_all_reduce() method.
 
             Arguments: 
             grads - A list of Tensors, that represent the gradient values for each 
@@ -373,7 +374,7 @@ class Distribute():
         # receive the index of the chunk
         index = self.comm.recv(source = self.recv_from_p,tag=0)
             
-        # receuve the chunk
+        # receive the chunk
         recv_list = []
         for i in range(self.iterations): 
             recv = self.comm.recv(source = self.recv_from_p, tag=i)

@@ -35,7 +35,7 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     batch_size,
     column_names = column_names,
     label_name = label_name,
-    num_epochs = 1)
+    num_epochs = 5)
 
 def pack_features_vector(features, labels):
   """Pack the features into a single array."""
