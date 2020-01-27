@@ -29,7 +29,7 @@ test_images = test_images / 255.0
 
 
 fmnist_train_ds = tf.data.Dataset.from_tensor_slices((train_images, train_labels))
-fmnist_train_ds = fmnist_train_ds.shuffle(5000).batch(32)
+fmnist_train_ds = fmnist_train_ds.shuffle(5000).batch(50)
 
 
 #declare the network layers
@@ -51,22 +51,24 @@ def loss(model, x, y):
 
   return loss_object(y_true=y, y_pred=y_)
 
-@tf.function
+
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
     loss_value = loss(model, inputs, targets)
 
   grads = tape.gradient(loss_value, model.trainable_variables)
  
+  # apply gradients to model
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
   return loss_value  
 
-train_loss_results = [] 
+num_epochs = 10
+train_loss_results = []
 train_accuracy_results = []
 
 start = time.perf_counter()
-for epoch in range(10):
+for epoch in range(num_epochs):
   
   # COMPUTES THE (WEIGHTED) MEAN OF THE GIVEN VALUES
   epoch_loss_avg = tf.keras.metrics.Mean()
@@ -80,8 +82,6 @@ for epoch in range(10):
    
     # Compute loss value and gradients
     loss_value = training_step(model, x, y)
-    
-    # apply gradients to model
     
     # Track progress
     epoch_loss_avg(loss_value)  # Add current batch loss
