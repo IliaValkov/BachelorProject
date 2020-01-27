@@ -114,7 +114,7 @@ with strategy.scope():
     # End epoch
     train_loss_results.append(epoch_loss_avg.result())
     train_accuracy_results.append(accuracy.result())
-    print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+    print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),accuracy.result()))
 
   end = time.perf_counter()
   print(f"Finished training loop in {round(end-start,2)} second(s).")
