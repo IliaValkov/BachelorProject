@@ -40,7 +40,11 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 #fit the data
+import time
+start = time.perf_counter()
 model.fit(train_images, train_labels, epochs=10)
+end = time.perf_counter()
+print(f"Finished training loop in {round(end - start, 2)} second(s))")
 
 #calculate accuracy
 test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
