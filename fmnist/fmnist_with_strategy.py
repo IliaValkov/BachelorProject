@@ -28,9 +28,17 @@ train_images = train_images / 255.0
 
 test_images = test_images / 255.0
 
+BUFFER_SIZE = len(train_images)
+
+BATCH_SIZE_PER_REPLICA = 50
+GLOBAL_BATCH_SIZE = BATCH_SIZE_PER_REPLICA * strategy.num_replicas_in_sync
+
+EPOCHS = 10
+
 
 fmnist_train_ds = tf.data.Dataset.from_tensor_slices((train_images, train_labels))
-fmnist_train_ds = fmnist_train_ds.shuffle(5000).batch(50)
+fmnist_train_ds = fmnist_train_ds.shuffle(BUFFER_SIZE).batch(GLOBAL_BATCH_SIZE)
+
 fmnist_train_ds = strategy.experimental_distribute_dataset(fmnist_train_ds)
 
 #declare the network layers
@@ -52,6 +60,7 @@ with strategy.scope():
 
     return loss_object(y_true=y, y_pred=y_)
 
+  accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
 
   def training_step(model, inputs, targets):
     with tf.GradientTape() as tape:
@@ -61,6 +70,7 @@ with strategy.scope():
    
     # apply gradients to model
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
+    accuracy(targets, model(inputs))
 
     return loss_value  
 
@@ -68,6 +78,7 @@ with strategy.scope():
   def distributed_training_step(model, inputs, targets):
     per_replica_losses = strategy.experimental_run_v2(training_step, 
       args=(model, inputs, targets))
+
     return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, 
       axis=None)
 
@@ -87,8 +98,7 @@ with strategy.scope():
     epoch_loss_avg = tf.keras.metrics.Mean()
     
     # CALCULATES HOW OFTEN PREDICTIONS MATCHES INTEGER LABELS
-    epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
-
+    
     # TRAINING LOOP
     for x, y in fmnist_train_ds:
       # Optimize the model
@@ -103,7 +113,7 @@ with strategy.scope():
 
     # End epoch
     train_loss_results.append(epoch_loss_avg.result())
-    train_accuracy_results.append(epoch_accuracy.result())
+    train_accuracy_results.append(accuracy.result())
     print("Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
 
   end = time.perf_counter()
