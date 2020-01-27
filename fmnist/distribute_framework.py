@@ -307,7 +307,7 @@ class Distribute():
         s = time.perf_counter()
         
         # Deconstruct grads 
-        tensor_list = self.deconstruct_faster(grads)
+        tensor_list = self.deconstruct(grads)
 
         # Reduce grads
         for i in range(self.size): 
@@ -326,7 +326,7 @@ class Distribute():
             tensor_list[index] = received_chunk[1]
       
         # Reconstruct grads and return
-        reduced_grads = self.reconstruct_faster(tensor_list)
+        reduced_grads = self.reconstruct(tensor_list)
         e = time.perf_counter()
         self.time_spend_reduction = self.time_spend_reduction + (e - s)
         return reduced_grads 

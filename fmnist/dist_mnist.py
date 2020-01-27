@@ -61,8 +61,8 @@ def training_step(model, inputs, targets):
     loss_value = loss(model, inputs, targets)
 
   grads = tape.gradient(loss_value, model.trainable_variables)
-  # grads = dist.simple_all_reduce(grads)
-  grads = dist.ring_all_reduce_large_lists(grads)
+  grads = dist.simple_all_reduce(grads)
+  # grads = dist.ring_all_reduce_large_lists(grads)
   optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
   return loss_value  
