@@ -22,17 +22,15 @@ class Distribute():
     gradients_shapes = None
     gradients_ranks = None
     tensors_dtype = None
+    # Helper variable for sending larger lists with the ring allreduce method
+    iterations = None
 
     # Variables for coordinating the communication between processes during ring allreduce
     recv_from_p = (rank - 1) % size
     send_to_p = (rank + 1) % size
     chunk_to_send = rank
 
-    # Variables for timing the reduction phase in both allreduce implementations,
-    # as well as the reconstruction and deconstruction phases in ring allreduce
-    time_spend_re = 0
-    time_spend_de = 0
-    time_spend_reduction = 0
+    
 
     def __init__(self):
         ''' init method for the Distribute object;
@@ -46,7 +44,7 @@ class Distribute():
         '''
         gpus = tf.config.experimental.list_physical_devices('GPU')
         if gpus:
-            try:   
+            try:    
                 if len(gpus) < self.size:
                     tf.config.experimental.set_visible_devices([], 'GPU')
                 else:    
@@ -54,12 +52,8 @@ class Distribute():
             except RuntimeError as e:
               # Visible devices must be set before GPUs have been initialized
                 print(e)
-                
-    def root_process_do(self, function, *args):
-        if self.rank == 0: 
-            function(*args)
 
-    def distribute_dataset(self, dataset, is_batched=False, batch_size=None):
+    def distribute_dataset(self, dataset, batch_size=None):
         ''' Function for providing each process with a part of the original dataset.
             It is based on tensorflow's Dataset.shard() function and provides a 
             wrapper for it. 
@@ -79,12 +73,13 @@ class Distribute():
             Returns: 
             The sharded Dataset object
         '''
-        if is_batched:
+        if batch_size:
             dataset = dataset.unbatch()
         
-        dist_dataset = dataset.shard(self.size, self.rank)
+        dist_dataset = dataset.shard(num_shards=self.size, index=self.rank)
         
-        if is_batched:
+        if batch_size:
+            dist_dataset = dist_dataset.repeat(5)
             dist_dataset = dist_dataset.batch(batch_size)
 
         return dist_dataset
@@ -97,13 +92,14 @@ class Distribute():
             model - a Model object with defined layers
 
             Returns: 
-            A Model object with the same variables
+            A Model object with the same variables as the ones initialized in the
+            root process
         '''
         if self.rank == 0:
             dist_w = [w for w in [l.get_weights() for l in model.layers]]
-        else:
-            dist_w = None 
-        
+        else: 
+            dist_w = None
+
         weights = self.comm.bcast(dist_w, root = 0) 
 
         for i, l in enumerate(model.layers): 
@@ -111,11 +107,11 @@ class Distribute():
         
         return model
 
-        
     def simple_all_reduce(self, grads):
         ''' Function to accumulate the locally computed gradients from all processes,
             perform the reducing operation and distributing back the reduced gradients
-            back to all processes. This method uses one process to accumulate, compute 
+            back to all processes. 
+            This method uses one process to accumulate, compute 
             and distribute back the gradients.
 
             Arguments: 
@@ -125,8 +121,7 @@ class Distribute():
             Returns: 
             The reduced list of Tensors
         '''
-        s = time.perf_counter()
-
+        
         # Accumulate local gradients in process 0
         accumulated_grads = self.comm.gather(grads, root=0)
         
@@ -140,16 +135,15 @@ class Distribute():
 
         # Distribute the result to all processes
         reduced_grads = self.comm.bcast(reduced_grads, root=0)
-        e = time.perf_counter()
-        self.time_spend_reduction = self.time_spend_reduction + (e - s)
+        
         return reduced_grads
 
     def ring_all_reduce(self, grads): 
         ''' Function to accumulate the locally computed gradients from all processes,
             perform the reducing operation and distributing back the reduced gradients
-            back to all processes. This method distributes the computation of the 
-            gradient values and the interprocess communication between the participating
-            processes. 
+            back to all processes. 
+            This method distributes the computation of the gradient values and the 
+            interprocess communication between the participating processes. 
 
             Note that this implementation only works with gradients, whose
             total amount of elements does not exceed 400 elements. 
@@ -165,8 +159,7 @@ class Distribute():
             Returns: 
             The reduced list of Tensors
         '''
-        s = time.perf_counter()
-        
+       
         # Deconstruct grads 
         tensor_list = self.deconstruct(grads)
 
@@ -193,8 +186,6 @@ class Distribute():
         # Reconstruct grads and return
         reduced_grads = self.reconstruct(tensor_list)
         
-        e = time.perf_counter()
-        self.time_spend_reduction = self.time_spend_reduction + (e - s)
         return reduced_grads
 
     def deconstruct(self, grads): 
@@ -208,7 +199,7 @@ class Distribute():
             Returns: 
             A list of Tensors represnting the deconstructed grads 
         '''
-        s = time.perf_counter()
+       
         # Save values for reconstruction
         if self.gradients_sizes is None:
             self.gradients_sizes = [tf.size(g) for g in grads]
@@ -226,8 +217,6 @@ class Distribute():
         chunk_len = round(len(flat_list)/self.size)
         tensor_list = [tf.constant(t, dtype=self.tensors_dtype) for t in self.chunks(flat_list,chunk_len)]
         
-        e = time.perf_counter()
-        self.time_spend_de = self.time_spend_de + (e - s)
         return tensor_list
 
     def reconstruct(self, tensor_list): 
@@ -241,8 +230,7 @@ class Distribute():
             A list of Tensors, each of which corresponds to the original gradiens
             shape. 
         '''
-        s = time.perf_counter()
-        
+    
         # Create flat list from the tensor list
         flat_list = []
         for t in tensor_list:
@@ -253,8 +241,6 @@ class Distribute():
         for g in self.generate_reconstructed_gradients(flat_list):
             reconstruncted_grads.append(g)
 
-        e = time.perf_counter()
-        self.time_spend_re = self.time_spend_re + (e - s)
         return reconstruncted_grads 
 
     @staticmethod
@@ -297,7 +283,7 @@ class Distribute():
 
             Note that this method is only for the purpose of showing how the ring all
             reduce would have to be implemented with the given set of tools.(Python,mpi4py).
-            If you have to reduce large lists use the simple all reduce method.
+            If you have to reduce large lists use the simple_all_reduce() method.
 
             Arguments: 
             grads - A list of Tensors, that represent the gradient values for each 
@@ -306,8 +292,7 @@ class Distribute():
             Returns: 
             The reduced list of Tensors
         '''
-        s = time.perf_counter()
-        
+       
         # Deconstruct grads 
         tensor_list = self.deconstruct_faster(grads)
 
@@ -329,8 +314,7 @@ class Distribute():
       
         # Reconstruct grads and return
         reduced_grads = self.reconstruct_faster(tensor_list)
-        e = time.perf_counter()
-        self.time_spend_reduction = self.time_spend_reduction + (e - s)
+        
         return reduced_grads 
 
 
@@ -348,18 +332,19 @@ class Distribute():
 
         # Convert the tensor to a lis
         list_to_send = tensor_to_send.numpy().tolist()
-        
+        max_elements = 400
+
         # Calculate how many iterations the tensor will need to be sent in
         if self.iterations == None:
-            self.iterations = math.ceil(len(list_to_send) / self.max_elements)
+            self.iterations = math.ceil(len(list_to_send) / max_elements)
         
         # Send the index
         self.comm.send(index, dest = self.send_to_p, tag=0)
 
         # Send the list slice by slice
         for i in range(self.iterations):
-            start = i*self.max_elements
-            end = start + self.max_elements  
+            start = i * max_elements
+            end = start + max_elements  
             
             self.comm.send(list_to_send[start:end], dest = self.send_to_p, tag=i)
         
@@ -376,7 +361,7 @@ class Distribute():
         # receive the index of the chunk
         index = self.comm.recv(source = self.recv_from_p,tag=0)
             
-        # receuve the chunk
+        # receive the chunk
         recv_list = []
         for i in range(self.iterations): 
             recv = self.comm.recv(source = self.recv_from_p, tag=i)

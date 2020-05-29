@@ -55,6 +55,10 @@ class Distribute():
               # Visible devices must be set before GPUs have been initialized
                 print(e)
 
+    def root_process_do(self, function, *args):
+        if self.rank == 0: 
+            function(*args)
+            
     def distribute_dataset(self, dataset, batch_size=None):
         ''' Function for providing each process with a part of the original dataset.
             It is based on tensorflow's Dataset.shard() function and provides a 
@@ -81,7 +85,6 @@ class Distribute():
         dist_dataset = dataset.shard(num_shards=self.size, index=self.rank)
         
         if batch_size:
-            dist_dataset = dist_dataset.repeat(5)
             dist_dataset = dist_dataset.batch(batch_size)
 
         return dist_dataset

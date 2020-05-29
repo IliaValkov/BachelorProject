@@ -6,6 +6,7 @@ import time
 import matplotlib.pyplot as plt 
 
 dist = Distribute()
+
 # GET THE DATA
 train_dataset_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_training.csv"
 train_dataset_fp = tf.keras.utils.get_file(fname=os.path.basename(train_dataset_url),
@@ -37,7 +38,6 @@ train_dataset = tf.data.experimental.make_csv_dataset(
     num_epochs = 1)
 
 train_dataset = dist.distribute_dataset(train_dataset, batch_size=batch_size)
-train_dataset = train_dataset.shuffle(60)
 
 def pack_features_vector(features, labels):
   """Pack the features into a single array."""
@@ -75,6 +75,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 train_loss_results = []
 train_accuracy_results = []
 
+num_epochs = 201
 
 def training_step(model, inputs, targets):
   with tf.GradientTape() as tape:
@@ -87,7 +88,6 @@ def training_step(model, inputs, targets):
 
   return loss_value
 
-num_epochs = 201
 # EPOCH LOOP
 start = time.perf_counter()
 for epoch in range(num_epochs):
@@ -115,24 +115,25 @@ for epoch in range(num_epochs):
   train_accuracy_results.append(epoch_accuracy.result())
 
   if epoch % 50 == 0:
-    print("Process: {} Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(dist.   rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
-
+    print("Process: {} Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(dist.rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+    
 end = time.perf_counter()
 print(f"Process {dist.rank} finished training loop in {round(end-start,2)} second(s).")
 # print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
 print(f"Process {dist.rank} Reduction time: {round(dist.time_spend_reduction, 2)} second(s)")
 
 # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
-fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
-fig.suptitle('Training Metrics')
+# fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+# fig.suptitle('Training Metrics')
 
-axes[0].set_ylabel("Loss", fontsize=14)
-axes[0].plot(train_loss_results)
+# axes[0].set_ylabel("Loss", fontsize=14)
+# axes[0].plot(train_loss_results)
 
-axes[1].set_ylabel("Accuracy", fontsize=14)
-axes[1].set_xlabel("Epoch", fontsize=14)
-axes[1].plot(train_accuracy_results)
+# axes[1].set_ylabel("Accuracy", fontsize=14)
+# axes[1].set_xlabel("Epoch", fontsize=14)
+# axes[1].plot(train_accuracy_results)
 # plt.show()
+
 
 # SETUP A DATASET  
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"

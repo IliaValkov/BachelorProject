@@ -115,24 +115,25 @@ for epoch in range(num_epochs):
   train_accuracy_results.append(epoch_accuracy.result())
 
   if epoch % 50 == 0:
-    print("Process: {} Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(dist.   rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
-
+    print("Process: {} Epoch {:03d}: Loss: {:.3f}, Accuracy: {:.3%}".format(dist.rank,epoch,epoch_loss_avg.result(),epoch_accuracy.result()))
+    
 end = time.perf_counter()
 print(f"Process {dist.rank} finished training loop in {round(end-start,2)} second(s).")
 # print(f"Process {dist.rank} Deconst-reconst time: {round(dist.time_spend_re_de, 2)} second(s)")
 print(f"Process {dist.rank} Reduction time: {round(dist.time_spend_reduction, 2)} second(s)")
 
 # VISUALIZE THE ACCURACY AND LOSS OVER THE EPOCHS
-fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
-fig.suptitle('Training Metrics')
+# fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+# fig.suptitle('Training Metrics')
 
-axes[0].set_ylabel("Loss", fontsize=14)
-axes[0].plot(train_loss_results)
+# axes[0].set_ylabel("Loss", fontsize=14)
+# axes[0].plot(train_loss_results)
 
-axes[1].set_ylabel("Accuracy", fontsize=14)
-axes[1].set_xlabel("Epoch", fontsize=14)
-axes[1].plot(train_accuracy_results)
+# axes[1].set_ylabel("Accuracy", fontsize=14)
+# axes[1].set_xlabel("Epoch", fontsize=14)
+# axes[1].plot(train_accuracy_results)
 # plt.show()
+
 
 # SETUP A DATASET  
 test_url = "https://storage.googleapis.com/download.tensorflow.org/data/iris_test.csv"
